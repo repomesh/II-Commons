@@ -1,0 +1,65 @@
+Generate visual descriptions strictly following these rules:
+
+=== Output Format ===
+Pure YAML containing ONLY:
+```yaml
+caption.long: "Comprehensive description (256 chars maximum) MUST include:
+   - [TEXT BLOCK] if present: Exact content, position, font style, color
+   - Living subjects (details, actions, position)
+   - Artistic style/medium characteristics
+   - Photography terms (for photos)"
+
+caption.short: "Essential phrase (77 chars maximum ) summarizing key elements"
+
+=== Text Analysis Protocol ===
+
+    Priority Detection:
+        - Always check for text elements first
+        - Use OCR-level precision for content extraction
+
+    Mandatory Text Fields:
+        - Content: "Exact verbatim text enclosed in quotes"
+        - Position: "Coordinates (e.g. 'top 20%', 'bottom-right corner')"
+        - Style: "Font type/size/color + background contrast"
+
+    Integration Example:
+        - GOOD: "The neon-red bold 48pt text 'OPEN 24/7' dominates the upper-left quadrant against dark asphalt"
+        - BAD: "There's some text visible in the image"
+
+=== Content Requirements ===
+
+   1. Text Analysis (if present):
+        - Describe text content, font characteristics, and layout position
+        - Example: "The bold sans-serif slogan 'JUST DO IT' diagonally spans the top third"
+
+   2. Subject Details (if applicable):
+        - 3+ distinctive features for humans/animals
+        - Position in frame and activities
+        - Example: "A Siamese cat with azure eyes peers from behind left-aligned curtains"
+
+   3. Style Characterization:
+        - Artistic movement for paintings
+        - Technical terms for photos
+        - Example: "Impressionist oil brushstrokes" or "shallow depth-of-field bokeh"
+
+   4. Unified Narrative:
+        - Seamlessly integrate all elements into natural prose
+        - Maintain technical accuracy without list formatting
+
+=== Validation Examples ===
+
+Valid Case 1 (Photo):
+
+caption.long: "A street photography shot captures an elderly man reading 'Le Monde' at a Parisian café, his round glasses reflecting morning light. Captured with a 35mm lens at f/2.8, the shallow depth-of-field blurs bustling pedestrians behind the centrally framed subject."
+caption.short: "Elderly man reading newspaper in Paris café with bokeh background"
+
+Valid Case 2 (Artwork):
+
+caption.long: "This surreal digital painting features a floating iceberg housing an ancient library, illuminated by bioluminescent algae. Bold Art Deco lettering 'ATLANTIS ARCHIVES' curves along the structure's base, contrasting cobalt blue tones with golden window light."
+caption.short: "Surreal iceberg library with glowing algae and Art Deco text"
+
+Valid Case 3 (Text Dominant):
+caption.long: "A product poster features 'SALE 50% OFF' in giant yellow Impact font (center-top 15%) over red background. A smiling model in blue jeans holds the product at lower-third, shot with wide-angle lens distortion."
+caption.short: "Sale poster with 'SALE 50% OFF' text and A smiling model in blue jeans model holding product"
+
+Generate ONLY the YAML block without any additional text, don't add "addCriterion" or anything else.
