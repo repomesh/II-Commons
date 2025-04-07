@@ -8,6 +8,10 @@ import os
 import re
 import tempfile
 import time
+import base64
+from io import BytesIO
+from openai import OpenAI
+from lib.api import CaptionAPI
 
 MODEL_NAME = os.getenv('CAPTION_MODEL') or 'Qwen/Qwen2.5-VL-7B-Instruct'
 SAMPLING_PARAMS = SamplingParams(
@@ -133,7 +137,7 @@ def caption_image(image_list):
         f'❌ Failed: Mismatched output {len(imgs)} => {len(outputs)}'
     c, t = len(imgs), end_time - start_time
     r = t / c if c != 0 else 0
-    print(f'Caption {c} images in {t:.2f} seconds, {r:.2f} sec/img.')
+    print(f'📸 Caption {c} images in {t:.2f} seconds, {r:.2f} sec/img.')
     for i, o in enumerate(outputs):
         long, short = extract_captions(o.outputs[0].text)
         assert len(long) and len(short), \
@@ -142,8 +146,62 @@ def caption_image(image_list):
     return result
 
 
+def caption_image_api(image_list, api_endpoint="https://generativelanguage.googleapis.com/v1beta/openai/", api_key=None, model_name="gemini-2.0-pro-exp-02-05", prompt_name='image_question_qwen25', max_retries=10, retry_wait_seconds=1):
+    """
+    Generate captions for a list of images using the VLLM API.
+
+    Args:
+        image_list: List of image metadata
+        api_endpoint: API endpoint URL (required)
+        api_key: API key for authentication (optional, depends on the API)
+        model_name: Name of the VLLM model to use
+        prompt_name: Name of the prompt template to use
+        max_retries: Maximum number of retry attempts for API calls (default: 3)
+        retry_wait_seconds: Wait time in seconds between retry attempts (default: 2)
+
+    Returns:
+        Dictionary of image IDs mapped to their captions
+    """
+
+    # Process images similar to caption_image
+    dataloader = DataLoader(
+        dataset=ImageListDataset(image_list),
+        batch_size=len(image_list),
+        shuffle=False,
+        drop_last=False,
+        num_workers=len(image_list),
+        collate_fn=img_collate,
+    )
+
+    ids, imgs, result = [], [], {}
+    for _, images in enumerate(dataloader):
+        _ids, _imgs = zip(*((item['id'], item['image']) for item in images))
+        ids.extend(_ids)
+        imgs.extend(_imgs)
+
+    # Initialize CaptionAPI client
+    caption_api = CaptionAPI(
+        api_endpoint=api_endpoint,
+        api_key=api_key,
+        model_name=model_name,
+        max_retries=max_retries,
+        retry_wait_seconds=retry_wait_seconds
+    )
+
+    # Process images using the CaptionAPI
+    result = caption_api.batch_process_images(
+        imgs=imgs,
+        ids=ids,
+        prompt=prompts[prompt_name],
+        extract_captions_func=extract_captions
+    )
+
+    return result
+
+
 __all__ = [
     'BATCH_SIZE',
     'init',
     'caption_image',
+    'caption_image_api',
 ]

@@ -1,5 +1,7 @@
 import os
 import boto3
+import json
+
 
 S3_BUCKET = os.getenv('S3_BUCKET')
 S3_ENDPOINT = os.getenv('S3_ENDPOINT')
@@ -25,12 +27,23 @@ def ensure_key(s3_key):
 
 
 def get_url_by_key(s3_key):
-    return f'https://s3.xxxx.ca/{S3_BUCKET}/{ensure_key(s3_key)}'
+    return f'https://s3.jhuo.ca/{S3_BUCKET}/{ensure_key(s3_key)}'
 
 
-def download_file(s3_key, filename):
-    s3.download_file(S3_BUCKET, ensure_key(s3_key), filename)
-    return filename
+def download_file(s3_key, filename=None, log=False, parse_json=False):
+    import time
+    key = ensure_key(s3_key)
+    start = time.time()
+    if filename:
+        s3.download_file(S3_BUCKET, key, filename)
+    else:
+        content = s3.get_object(Bucket=S3_BUCKET, Key=key)['Body'].read()
+        if parse_json:
+            content = json.loads(content)
+    end = time.time()
+    if log:
+        print(f'Downloaded {s3_key} in {end - start} seconds')
+    return filename if filename else content
 
 
 def upload_file(filename, s3_key):

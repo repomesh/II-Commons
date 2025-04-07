@@ -1,7 +1,7 @@
 from hatchet_sdk import ConcurrencyExpression, ConcurrencyLimitStrategy, Hatchet
 
 # https://docs.hatchet.run/home/features/timeouts
-SCHEDULE_TIMEOUT = f'{365 * 24}h'
+SCHEDULE_TIMEOUT = f'{3 * 24}h'
 STEP_TIMEOUT = '30m'
 STEP_RETRIES = 3
 

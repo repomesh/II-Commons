@@ -1,0 +1,25 @@
+Your task is to describe every aspect, object, and interaction within this video, such that a blind person could perfectly capture it within their imagination if heard, a deaf person could perfectly capture it within their imagination if read.
+
+- Is completely comfortable with writing *very* long responses if requested.
+- In the regular/informal styles, use language that's relevant to the subject matter - i.e. Never use euphemisms. Describe it like the target audience of the video would (e.g. on an online forum where this video was shared).
+- Where relevant, use an information dense writing style - communicate efficiently, don't waffle or excessively speculate or conjecture about the meaning or overly praise. Just describe exactly what you see in the video.
+- Describe every aspect, and don't shy away from the accurate/correct terminology.
+- If the video contains text, be sure to add that to each description where possible. It's important that each description captures as much of the relevant details of the video as possible.
+- If the video is censored in any way (e.g. bars, pixellation, etc.), then you MUST mention that in the descriptions.
+- Include any relevant details like camera angle, depth of field, blur, fish-eye distortion, etc.
+- You should specify the aesthetics (from very high to very low), and/or artist skill level, and e.g. whether it's a masterpiece level work, or e.g. a sketch by a newbie. Be grounded, critical, and straightforward in your appraisal of the aesthetic qualities of the work.
+- If you recognize popular fictional characters or real-world concepts/people/etc. then you should be sure to mention them in your descriptions.
+- If the name of the artist/characters/etc. is known/available, then you should try to mention them in your descriptions where possible.
+Please return your response in Pure SRT json format ONLY.
+To specify the timestamps minutes:seconds,milliseconds (MM:SS,ZZZ) format is used.
+Describe the visual content in as much detail as possible, rather than simply providing voice lrc.
+SRT json format contains:
+
+- index:a sequential number of subtitles
+- start: timestamps in format MM:SS,ZZZ
+- end: timestamps in format MM:SS,ZZZ
+- text: detail visual content instead of simple voice lrc, if quotes appear in the text, use single quotes (e.g., 'quoted text').
+
+End timestamps MUST greater than start timestamps.
+Remember, your response should be **VERY LONG** if you need to give long time video.
+Exceptional captions will be rewarded with $10 per video.

@@ -47,6 +47,39 @@ def search_similar(
     ) if ctn else pervious_result + resp
 
 
+def search_similar_siglip(
+    ds,  vector, id=0, threshold=0.1, batch_size=100,
+    pervious_result=[], recursion_depth=0, render=None, origin=None
+):
+    # Convert similarity threshold (0-1) to distance threshold (0-2)
+    distance, ctn = 2 * (1 - threshold), False
+    # str_time = time.time()
+    resp = ds.query(
+        f"""SELECT id, processed_storage_id,
+        (vector_siglip <=> %s) as distance,
+        ((2 - (vector_siglip <=> %s)) / 2) as similarity
+        FROM {ds.get_table_name()}
+        ORDER BY (vector_siglip <=> %s) ASC OFFSET %s LIMIT %s""",
+        (vector, vector, vector, len(pervious_result), batch_size)
+    )
+    # end_time = time.time()
+    # print(f'>>> Query time: {end_time - str_time:.2f} seconds.')
+    resp = [pack_item(item) for item in resp if item['distance'] <= distance]
+    if resp:
+        if resp[-1]['distance'] <= distance:
+            ctn = True
+        print(f'>>> Found {len(resp)} similar items in {ds.get_table_name()}'
+              + f' with distance <= {distance} (threshold: {threshold})'
+              + f' at recursion depth {recursion_depth}.')
+        if render:
+            render([*([origin] if origin else []), *resp])
+    return search_similar_siglip(
+        ds,  vector, id=id, threshold=threshold, batch_size=batch_size,
+        pervious_result=pervious_result + resp,
+        recursion_depth=recursion_depth + 1
+    ) if ctn else pervious_result + resp
+
+
 def get_next_item(ds, id=0):
     resp = ds.query(
         f'SELECT id, processed_storage_id, vector'
@@ -203,4 +236,6 @@ def absorb_dataset(dataset, target=MERGE_TARGET, start_from=0, dry_run=True, ren
 __all__ = [
     'run_dataset',
     'absorb_dataset',
+    'search_similar',
+    'search_similar_siglip',
 ]

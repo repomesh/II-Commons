@@ -25,7 +25,7 @@ TIMEOUT = (3, 30)
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-    + 'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36'
+    + 'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
 }
 
 
@@ -304,6 +304,12 @@ def write_json(data, filename):
     return write_file(json_dumps(data), filename)
 
 
+def write_jsonl(data, filename, append=False):
+    with open(filename, 'a' if append else 'w+', encoding='utf-8') as file:
+        for item in data:
+            file.write(json_dumps(item) + '\n')
+
+
 def json_dumps(data,  indent=4, sort_keys=True, cls=JsonEncoder, compact=True):
     """
     Dump data to JSON string
@@ -451,6 +457,19 @@ def download(url, filename=None, suffix=None, timeout=TIMEOUT):
         raise RuntimeError(f"Download failed '{url}': {e}")
 
 
+def get_file_type(filename):
+    try:
+        with open(filename, 'rb') as f:
+            if f.read(4).startswith(b'%PDF'):
+                return 'PDF'
+        with open(filename, 'r', encoding='utf-8') as f:
+            f.read()
+        return 'TEXT'
+    except UnicodeDecodeError:
+        pass
+    return None
+
+
 # initialize HEIF support
 register_heif_opener()
 
@@ -500,4 +519,6 @@ __all__ = [
     'write_file',
     'write_image',
     'write_json',
+    'write_jsonl',
+    'get_file_type',
 ]
