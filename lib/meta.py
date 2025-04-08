@@ -4,7 +4,7 @@ import os
 import pandas
 
 
-def parse_parquet(filename):
+def parse_dict_parquet(filename):
     return [line.to_dict() for line in pandas.read_parquet(
         filename, engine='pyarrow'
     ).iterrows()]
@@ -22,15 +22,15 @@ def parse_wiki_featured(folder):
     return list(map(lambda im: {'text': text_meta, 'image': im}, img_meta_s))
 
 
-def parse_megalith_parquet(filename):
+def parse_tube_parquet(filename):
     return [{'id': id, **line.to_dict()} for id, line in pandas.read_parquet(
         filename, engine='pyarrow'
     ).iterrows()]
 
 
 __all__ = [
+    'parse_dict_parquet',
     'parse_jsonl',
-    'parse_megalith_parquet',
-    'parse_parquet',
+    'parse_tube_parquet',
     'parse_wiki_featured',
 ]

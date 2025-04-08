@@ -6,7 +6,7 @@ import json
 import os
 import re
 
-S3_PATH = 'vintage-450k'  # legacy issue
+S3_PATH = 'ii-datasets'
 SQL_PROCESSED = "processed_storage_id != ''"
 
 CC12M_JSONL = {
