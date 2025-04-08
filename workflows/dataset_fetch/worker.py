@@ -64,9 +64,6 @@ class DatasetFetchWorkflow:
                 log(f"Skipping download: {meta['url']}")
                 continue
             try:
-                # if args['dataset'] == 'arxiv':
-                #     s3_exs = False
-                # else:
                 s3_exs = exists(s3_key)
                 if s3_exs:
                     meta['origin_storage_id'] = get_address_by_key(s3_key)
@@ -81,6 +78,8 @@ class DatasetFetchWorkflow:
                         print(meta)
                         raise ValueError('Invalid paper_id.')
                     try:
+                        # hack:
+                        os.environ['GCS_BUCKET'] = "arxiv-dataset"
                         download_file(gcs_url, filename)
                         log(f"Downloaded {gcs_url} to: {filename}")
                     except Exception as e:
