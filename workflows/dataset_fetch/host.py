@@ -1,4 +1,4 @@
-from lib.dataset import init
+from lib.dataset import init as init_dataset
 from lib.hatchet import push_dataset_event
 from lib.meta import parse_jsonl, parse_dict_parquet, parse_wiki_featured, parse_tube_parquet
 import os
@@ -24,11 +24,11 @@ def trigger(force=False):
         buffer = []
 
 
-def run_host(parser, meta_path):
+def run(parser, meta_path):
     global buffer, ds, dataset_name
     dataset_name = parser
-    ds = init(dataset_name)
-    print(f"Running {dataset_name}...")
+    ds = init_dataset(dataset_name)
+    print(f"Loading {dataset_name}...")
     i = 0
     meta_files = []
     if os.path.isdir(meta_path):
@@ -75,5 +75,5 @@ def run_host(parser, meta_path):
 
 
 __all__ = [
-    'run_host'
+    'run'
 ]

@@ -106,7 +106,12 @@ class DatasetFetchWorkflow:
         }
 
 
-def run_worker():
+def run():
     worker = hatchet.worker(WORKER, max_runs=WORKER_LIMIT)
     worker.register_workflow(DatasetFetchWorkflow())
     worker.start()
+
+
+__all__ = [
+    'run'
+]

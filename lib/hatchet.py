@@ -1,4 +1,5 @@
 from hatchet_sdk import ConcurrencyExpression, ConcurrencyLimitStrategy, Hatchet
+from lib.config import GlobalConfig
 
 # https://docs.hatchet.run/home/features/timeouts
 SCHEDULE_TIMEOUT = f'{3 * 24}h'
@@ -37,7 +38,7 @@ def concurrency(max_runs):
     )
 
 
-hatchet = Hatchet()  # debug=True
+hatchet = Hatchet(debug=GlobalConfig.DEBUG)
 
 __all__ = [
     'LIMIT_EXPRESSION',

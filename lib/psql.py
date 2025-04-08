@@ -1,3 +1,4 @@
+from lib.config import GlobalConfig
 from lib.embedding import DIMENSION
 from lib.utilitas import Empty
 from lib.s3 import get_url_by_key
@@ -9,6 +10,7 @@ import datetime
 import os
 import random
 import time
+
 
 POSTGRES_HOST = os.getenv('POSTGRES_HOST')
 POSTGRES_PORT = os.getenv('POSTGRES_PORT')
@@ -56,7 +58,8 @@ def execute(sql, values=None, log=False, autocommit=True, batch=False):
 def ensure_vector_extension():
     sql = 'CREATE EXTENSION IF NOT EXISTS vector'
     res = execute(sql)
-    print(f'Setup: {sql} => {res.statusmessage}')
+    if GlobalConfig.DEBUG:
+        print(f'Init: {sql} => {res.statusmessage}')
     return res
 
 
