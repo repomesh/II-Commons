@@ -1,12 +1,13 @@
 from lib.config import GlobalConfig
 from lib.dataset import init
-from lib.embedding import BATCH_SIZE
 from lib.hatchet import push_dataset_event
 from lib.utilitas import sha256
 
+BATCH_SIZE = 1
+
 dataset_name = None
-ds = None
 buffer = []
+ds = None
 last_item = 0
 limit = 0
 
@@ -17,17 +18,30 @@ def trigger(force=False):
         if GlobalConfig.dryrun:
             print(f"Dryrun: {buffer}")
         else:
-            push_dataset_event('embedding_image', dataset_name, buffer)
+            if dataset_name == 'wikipedia_en':
+                ds_name = 'text_0000001_en'
+            else:
+                ds_name = dataset_name
+            push_dataset_event('embedding_text', ds_name, buffer)
         buffer = []
 
 
 def get_unprocessed():
-    return ds.get_unprocessed(limit=BATCH_SIZE, offset=last_item)
+    match dataset_name:
+        case 'wikipedia_en':
+            return ds.query(
+                f"SELECT id, origin_storage_id FROM {ds.get_table_name()}"
+                + ' WHERE id NOT IN (select source_id from ts_text_0000001_en)'
+                + ' AND namespace = %s AND redirecturl = %s'
+                + ' AND id > %s ORDER BY id ASC LIMIT %s',
+                ('Page', '', last_item, BATCH_SIZE)
+            )
+        case _:
+            raise ValueError(f'Unsupported dataset: {dataset_name}')
 
 
-def run_host(name):
-    global buffer, last_item, dataset_name, ds
-    dataset_name = name
+def run(name):
+    global buffer, last_item, ds
     ds = init(name)
     i = 0
     meta_items = get_unprocessed()
@@ -41,9 +55,8 @@ def run_host(name):
             # print(meta)
             buffer.append({
                 'id': meta['id'],
-                'hash': sha256(meta['processed_storage_id']) if dataset_name == 'alpha' else meta['hash'],
-                'origin_storage_id': None if dataset_name == 'alpha' else meta['origin_storage_id'],
-                'processed_storage_id': meta['processed_storage_id'] if dataset_name == 'alpha' else None,
+                'hash': sha256(meta['origin_storage_id']),
+                'origin_storage_id': meta['origin_storage_id'],
             })
             trigger()
             if i >= limit > 0:

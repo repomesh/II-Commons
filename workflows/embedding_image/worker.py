@@ -112,7 +112,12 @@ class EmbeddingWorkflow:
         }
 
 
-def run_worker():
+def run():
     worker = hatchet.worker(WORKER, max_runs=WORKER_LIMIT)
     worker.register_workflow(EmbeddingWorkflow())
     worker.start()
+
+
+__all__ = [
+    'run'
+]
