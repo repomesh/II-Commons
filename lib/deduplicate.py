@@ -200,8 +200,7 @@ def merge_items(sc, tg, source):
 
 
 def absorb_dataset(dataset, target=MERGE_TARGET, start_from=0, dry_run=True, render=None):
-    ds = init(dataset, materialized=True)
-    tg = init(target)
+    ds, tg = init(dataset), init(target)
     total_source_items, _ = get_total_items(ds), get_total_items(tg)
     cur_item = get_next_item_sc(ds, id=start_from)
     while cur_item:

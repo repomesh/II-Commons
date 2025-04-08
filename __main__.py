@@ -32,7 +32,7 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Demo:
-    python -m dataset_tools --dataset dataset_path --parser parser_name
+    python -m dataset_tools --dataset dataset_path --name dataset_name
     python -m dataset_tools --worker worker_name
     python -m dataset_tools --version
         """
@@ -40,14 +40,14 @@ Demo:
 
     parser.add_argument(
         '-d', '--dataset',
-        help='load dataset: dataset_path',
+        help='dataset path: metadata file or directory',
         type=str,
         required=False
     )
 
     parser.add_argument(
-        '-p', '--parser',
-        help='parser: dataset parser: cc12m, cc12m_cleaned, cc12m_woman, vintage_450k, pd12m, wikipedia_featured, megalith_10m, arxiv',
+        '-n', '--name',
+        help='dataset name: cc12m, cc12m_cleaned, cc12m_woman, vintage_450k, pd12m, wikipedia_featured, megalith_10m, arxiv',
         type=str,
         required=False
     )
@@ -114,15 +114,19 @@ def main() -> Optional[int]:
         if args.verbose:
             GlobalConfig.set_log_level(logging.DEBUG)
 
+        if args.dryrun:
+            GlobalConfig.set_dryrun(True)
+
         if args.dataset:
             logger.info(f"Load dataset: {args.dataset}")
-            run_dataset_fetch_host(args.parser, args.dataset, args.dryrun)
+            run_dataset_fetch_host(args.name, args.dataset)
         elif args.worker:
             logger.info(f"Run worker: {args.worker}")
             # TODO: 實現輸出邏輯
         else:
             logger.info("No action specified")
             return 1
+
     except Exception as e:
         logger.error(f"Error: {str(e)}")
         return 1

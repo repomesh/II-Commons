@@ -236,7 +236,7 @@ def map_field(set_name, meta, field, i2d=False, default=None):
     ).get(field, field), default)
 
 
-def init(name, i2d=False, materialized=False):
+def init(name, i2d=False):
     if name is None:
         raise Exception('Dataset name is required.')
     if RULES.get(name) is None:
@@ -245,8 +245,7 @@ def init(name, i2d=False, materialized=False):
         raise Exception(
             f'Only `img2dataset` mode is supported for this dataset: {name}'
         )
-    dataset = get_dataset(RULES[name]['pool_id'],
-                          name, materialized=materialized)
+    dataset = get_dataset(name)
     dataset.init()
 
     def get_s3_key(meta):
@@ -324,8 +323,8 @@ def get_datasets():
     return sorted([table['table_name'][3:] for table in resp])
 
 
-def count(pool_id, sql):
-    return query(pool_id, sql)[0]['count']
+def count(sql):
+    return query(sql)[0]['count']
 
 
 def get_ratio(a, b, format=True):
@@ -337,23 +336,19 @@ def analyze(ds):
     SQL_COUNT = f'SELECT count(id) FROM {ds.get_table_name()}'
     SQL_PROCESSED_FULL = f'{SQL_COUNT} WHERE {SQL_PROCESSED}'
     result = {}
-    result['fetched'] = count(ds.pool_id, SQL_COUNT)
-    result['valid'] = count(ds.pool_id, SQL_PROCESSED_FULL)
+    result['fetched'] = count(SQL_COUNT)
+    result['valid'] = count(SQL_PROCESSED_FULL)
     result['valid_ratio'] = get_ratio(result['valid'], result['fetched'])
     result['reprocessed'] = count(
-        ds.pool_id, SQL_PROCESSED_FULL
+        SQL_PROCESSED_FULL
         + " AND processed_storage_id SIMILAR TO '%processed\\.jpg'"
     )
     result['reprocessed_ratio'] = get_ratio(
         result['reprocessed'], result['valid']
     )
-    result['unique'] = count(
-        ds.pool_id, f'{SQL_PROCESSED_FULL} AND similar_to = 0'
-    )
+    result['unique'] = count(f'{SQL_PROCESSED_FULL} AND similar_to = 0')
     result['unique_ratio'] = get_ratio(result['unique'], result['valid'])
-    result['duplicated'] = count(
-        ds.pool_id, f'{SQL_PROCESSED_FULL} AND similar_to != 0'
-    )
+    result['duplicated'] = count(f'{SQL_PROCESSED_FULL} AND similar_to != 0')
     result['duplicated_ratio'] = get_ratio(
         result['duplicated'], result['valid']
     )

@@ -1,4 +1,5 @@
 from lib.dataset import init as init_dataset
+from lib.config import GlobalConfig
 from lib.hatchet import push_dataset_event
 from lib.meta import parse_jsonl, parse_dict_parquet, parse_wiki_featured, parse_tube_parquet
 import os
@@ -20,13 +21,16 @@ def stop():
 def trigger(force=False):
     global buffer
     if force or len(buffer) >= BATCH_SIZE:
-        push_dataset_event('fetch', dataset_name, buffer)
+        if GlobalConfig.dryrun:
+            print(f"Dryrun: {buffer}")
+        else:
+            push_dataset_event('fetch', dataset_name, buffer)
         buffer = []
 
 
-def run(parser, meta_path):
+def run(name, meta_path):
     global buffer, ds, dataset_name
-    dataset_name = parser
+    dataset_name = name
     ds = init_dataset(dataset_name)
     print(f"Loading {dataset_name}...")
     i = 0

@@ -27,9 +27,15 @@ class GlobalConfig:
 
     DEBUG = False
 
+    DRYRUN = False
+
     @classmethod
     def set_log_level(cls, level: int):
         cls.LOG_LEVEL = level
         logging.getLogger().setLevel(level)
         if level == logging.DEBUG:
             cls.DEBUG = True
+
+    @classmethod
+    def set_dryrun(cls, dryrun: bool):
+        cls.DRYRUN = dryrun
