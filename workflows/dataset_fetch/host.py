@@ -32,7 +32,6 @@ def run(name, meta_path):
     global buffer, ds, dataset_name
     dataset_name = name
     ds = init_dataset(dataset_name)
-    print(f"Loading {dataset_name}...")
     i = 0
     meta_files = []
     if os.path.isdir(meta_path):

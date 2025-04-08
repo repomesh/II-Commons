@@ -12,7 +12,7 @@ WORKFLOW = 'DatasetFetch'
 WORKER = 'DatasetFetch'
 WORKFLOW_LIMIT = int(os.environ.get('WORKFLOW_LIMIT_DATASETFETCH', '500'))
 WORKER_LIMIT = int(os.environ.get('WORKER_LIMIT_DATASETFETCH', '30'))
-# i = 0
+i = 0
 
 
 @hatchet.workflow(

@@ -7,7 +7,7 @@ import sys
 import atexit
 from typing import Optional
 from lib.config import GlobalConfig
-from workflows.dataset_fetch import run_host as run_dataset_fetch_host
+from workflows.dataset_fetch import run_host as run_dataset_fetch_host, run_worker as run_dataset_fetch_worker
 
 logging.basicConfig(
     level=GlobalConfig.LOG_LEVEL,
@@ -24,6 +24,14 @@ def cleanup():
 
 
 atexit.register(cleanup)
+
+
+def run_worker(worker_name: str):
+    if worker_name == 'dataset_fetch':
+        run_dataset_fetch_worker()
+    else:
+        logger.error(f"Invalid worker name: {worker_name}")
+        return 1
 
 
 def parse_args() -> argparse.Namespace:
@@ -118,11 +126,11 @@ def main() -> Optional[int]:
             GlobalConfig.set_dryrun(True)
 
         if args.dataset:
-            logger.info(f"Load dataset: {args.dataset}")
+            logger.info(f"Load dataset: {args.dataset}...")
             run_dataset_fetch_host(args.name, args.dataset)
         elif args.worker:
-            logger.info(f"Run worker: {args.worker}")
-            # TODO: 實現輸出邏輯
+            logger.info(f"Run worker: {args.worker}...")
+            run_worker(args.worker)
         else:
             logger.info("No action specified")
             return 1
