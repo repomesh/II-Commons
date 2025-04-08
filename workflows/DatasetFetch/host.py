@@ -1,10 +1,7 @@
 from lib.dataset import init
 from lib.hatchet import push_dataset_event
-from lib.meta import parse_jsonl, parse_parquet, parse_wiki_featured, parse_megalith_parquet
-from lib.utilitas import get_file_type
+from lib.meta import parse_jsonl, parse_dict_parquet, parse_wiki_featured, parse_tube_parquet
 import os
-import tempfile
-from lib.s3 import download_file
 
 DATASET_BASE = '/Volumes/Betty/Datasets/meta'
 DATASETS = {
@@ -16,9 +13,10 @@ DATASETS = {
     'wikipedia_featured': {'meta_path': 'meta'},  # done
     'megalith_10m': {'meta_path': 'meta'},  # Stopped, flickr limitation
     'arxiv': {'meta_path': 'arxiv-metadata-hash-abstracts-v0.2.0-2019-03-01.json'},
+    'arxiv_oai': {'meta_path': 'arxiv-metadata-oai-snapshot.json'},
 }
 
-DATASET = 'arxiv'
+DATASET = 'arxiv_oai'
 META_PATH = os.path.join(DATASET_BASE, DATASET, DATASETS[DATASET]['meta_path'])
 BATCH_SIZE = 1
 
@@ -41,6 +39,7 @@ def trigger(force=False):
 
 
 def run_host():
+    print(f"Running {DATASET}...")
     global buffer
     i = 0
     meta_files = []
@@ -53,9 +52,9 @@ def run_host():
         if DATASET == 'wikipedia_featured' and os.path.isdir(meta_file):
             meta_items = parse_wiki_featured(meta_file)
         elif DATASET == 'megalith_10m':
-            meta_items = parse_megalith_parquet(meta_file)
+            meta_items = parse_tube_parquet(meta_file)
         elif meta_file.endswith('.parquet'):
-            meta_items = parse_parquet(meta_file)
+            meta_items = parse_dict_parquet(meta_file)
         elif meta_file.endswith('.jsonl'):
             meta_items = parse_jsonl(meta_file)
         elif meta_file.endswith('.json'):
@@ -73,37 +72,12 @@ def run_host():
                 meta = ds.map_meta(meta)
             except Exception as e:
                 print(f"Error mapping meta: {str(e)}")
-                print(meta)
                 continue
             meta_snapshot = ds.snapshot(meta)
-            # if DATASET == 'arxiv':
-            #     temp_path = tempfile.TemporaryDirectory(
-            #         suffix=f'-{meta["hash"]}'
-            #     )
-            #     filename = os.path.join(temp_path.name, f"{meta['hash']}.pdf")
-            #     s3_key = ds.get_s3_key(meta)
-            #     if ds.exists(meta):
-            #         try:
-            #             download_file(s3_key, filename)
-            #             type = get_file_type(filename)
-            #             if type == 'PDF':
-            #                 print(f"File is OK {i}: {s3_key}")
-            #                 continue
-            #             elif type == 'TEXT':
-            #                 print(f"File is TEXT {i}: {s3_key}")
-            #         except Exception as e:
-            #             print(f"Not ready {i}: {s3_key}, refetch...")
-            #         print(f'Delete old meta {i}: {meta["paper_id"]}')
-            #         ds.query(
-            #             f"DELETE FROM {ds.get_table_name()} WHERE paper_id = %s",
-            #             (meta['paper_id'],)
-            #         )
-            # el
             if ds.exists(meta):
-                print(f"Skipping existing: {meta_snapshot}")
+                print(f"Skipping existing {i}: {meta_snapshot}")
                 continue
             print(f"Processing row {i}: {meta_snapshot}")
-            # print(meta)
             buffer.append(meta)
             trigger()
             if limit > 0 and i >= limit:

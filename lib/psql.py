@@ -10,17 +10,11 @@ import os
 import random
 import time
 
-POSTGRES_HOST_1 = os.getenv('POSTGRES_HOST_1')
-POSTGRES_PORT_1 = os.getenv('POSTGRES_PORT_1')
-POSTGRES_USER_1 = os.getenv('POSTGRES_USER_1')
-POSTGRES_PASSWORD_1 = os.getenv('POSTGRES_PASSWORD_1')
-POSTGRES_DB_1 = os.getenv('POSTGRES_DB_1')
-
-POSTGRES_HOST_2 = os.getenv('POSTGRES_HOST_2')
-POSTGRES_PORT_2 = os.getenv('POSTGRES_PORT_2')
-POSTGRES_USER_2 = os.getenv('POSTGRES_USER_2')
-POSTGRES_PASSWORD_2 = os.getenv('POSTGRES_PASSWORD_2')
-POSTGRES_DB_2 = os.getenv('POSTGRES_DB_2')
+POSTGRES_HOST = os.getenv('POSTGRES_HOST')
+POSTGRES_PORT = os.getenv('POSTGRES_PORT')
+POSTGRES_USER = os.getenv('POSTGRES_USER')
+POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
+POSTGRES_DB = os.getenv('POSTGRES_DB')
 
 DEBUG = os.getenv('DEBUG', 'false').lower() == 'true'
 VACUUM_CHANCE = 100000
@@ -31,25 +25,13 @@ def configure(conn):
     register_vector(conn)
 
 
-pool_1 = ConnectionPool(
-    conninfo=f'postgresql://{POSTGRES_USER_1}:{POSTGRES_PASSWORD_1}@{POSTGRES_HOST_1}:{POSTGRES_PORT_1}/{POSTGRES_DB_1}',
-    open=True, configure=configure, min_size=3, max_size=100000
-)
-
-pool_2 = ConnectionPool(
-    conninfo=f'postgresql://{POSTGRES_USER_2}:{POSTGRES_PASSWORD_2}@{POSTGRES_HOST_2}:{POSTGRES_PORT_2}/{POSTGRES_DB_2}',
+pool = ConnectionPool(
+    conninfo=f'postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}',
     open=True, configure=configure, min_size=3, max_size=100000
 )
 
 
-def execute(pool_id, sql, values=None, log=False, autocommit=True, batch=False):
-    match pool_id:
-        case 'pool_1':
-            pool = pool_1
-        case 'pool_2':
-            pool = pool_2
-        case _:
-            raise ValueError('Invalid pool ID')
+def execute(sql, values=None, log=False, autocommit=True, batch=False):
     with pool.connection() as conn:
         if log or DEBUG:
             render_value = f' w/ {values}' if values else ''
@@ -71,10 +53,11 @@ def execute(pool_id, sql, values=None, log=False, autocommit=True, batch=False):
         return cursor
 
 
-def ensure_vector_extension(pool_id):
+def ensure_vector_extension():
     sql = 'CREATE EXTENSION IF NOT EXISTS vector'
-    res = execute(pool_id, sql)
-    # print(f'Setup: {sql} => {res.statusmessage}')
+    res = execute(sql)
+    print(f'Setup: {sql} => {res.statusmessage}')
+    return res
 
 
 def check_dataset(dataset):
@@ -82,14 +65,14 @@ def check_dataset(dataset):
         raise ValueError('`dataset` is required.')
 
 
-def vacuum_table(pool_id, table_name, force=False):
+def vacuum_table(table_name, force=False):
     if force or random.randint(1, VACUUM_CHANCE) == 1:
-        return execute(pool_id, f'VACUUM {table_name}', log=True)
+        return execute(f'VACUUM {table_name}', log=True)
 
 
-def get_table_name(dataset, materialized=False):
+def get_table_name(dataset):
     check_dataset(dataset)
-    head, tail = 'sc' if materialized else 'ds', ''
+    head, tail = 'sc', ''
     # @todo: temp fix for arxiv_oai
     if dataset == 'arxiv_oai':
         dataset = 'arxiv'
@@ -108,19 +91,18 @@ def get_table_name(dataset, materialized=False):
     return table_name
 
 
-def truncate(pool_id, dataset, force=False, materialized=False):
-    assert_materialized(materialized)
+def truncate(dataset, force=False):
     assert force, 'Make sure you know what you are doing!'
     table_name = get_table_name(dataset)
-    return execute(pool_id, f'TRUNCATE {table_name}', log=True)
+    return execute(f'TRUNCATE {table_name}', log=True)
 
 
 def generate_empty_vector(dim=DIMENSION):
     return f"'{','.join(['0'] * dim)}'::vector"
 
 
-def init(pool_id, dataset, materialized=False):
-    table_name = get_table_name(dataset, materialized=materialized)
+def init(dataset):
+    table_name = get_table_name(dataset)
     if dataset == 'wikipedia_en':
         list_sql = []
     elif dataset == 'text_0000001_en':
@@ -147,23 +129,6 @@ def init(pool_id, dataset, materialized=False):
             f'CREATE INDEX IF NOT EXISTS {table_name}_created_at_index ON {table_name} (created_at)',
             f'CREATE INDEX IF NOT EXISTS {table_name}_updated_at_index ON {table_name} (updated_at)',
             f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING hnsw(vector vector_cosine_ops)',
-        ]
-    elif materialized:
-        list_sql = [
-            f'CREATE INDEX IF NOT EXISTS {table_name}_id_index ON {table_name} (id)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_url_index ON {table_name} (url)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_origin_width_index ON {table_name} (origin_width)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_origin_height_index ON {table_name} (origin_height)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_origin_storage_id_index ON {table_name} (origin_storage_id)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_processed_storage_id_index ON {table_name} (processed_storage_id)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_processed_width_index ON {table_name} (processed_width)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_processed_height_index ON {table_name} (processed_height)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_aspect_ratio_index ON {table_name} (aspect_ratio)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_exif_index ON {table_name} USING gin(exif)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_meta_index ON {table_name} USING gin(meta)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING hnsw(vector vector_cosine_ops)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_created_at_index ON {table_name} (created_at)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_updated_at_index ON {table_name} (updated_at)',
         ]
     else:
         list_sql = [
@@ -210,9 +175,9 @@ def init(pool_id, dataset, materialized=False):
         ]
     result = []
     for sql in list_sql:
-        res = execute(pool_id, sql)
+        res = execute(sql)
         result.append(res)
-        # print(f'Init: {sql} => {res.statusmessage}')
+        print(f'Init: {sql} => {res.statusmessage}')
     return result
 
 
@@ -237,8 +202,7 @@ def enrich_data(data):
     return data
 
 
-def insert(pool_id, dataset, data, deplicate_ignore=[], tail='', materialized=False):
-    assert_materialized(materialized)
+def insert(dataset, data, deplicate_ignore=[], tail=''):
     table_name = get_table_name(dataset)
     if not data:
         raise ValueError('`data` is required.')
@@ -258,22 +222,22 @@ def insert(pool_id, dataset, data, deplicate_ignore=[], tail='', materialized=Fa
         ])
     result = []
     for sql in list_sql:
-        result.append(query(pool_id, sql[0], sql[1]))
+        result.append(query(sql[0], sql[1]))
     return result
 
 
-def hash_exists(pool_id, dataset, hash, materialized=False):
-    table_name = get_table_name(dataset, materialized=materialized)
+def hash_exists(dataset, hash):
+    table_name = get_table_name(dataset)
     result = query(
-        pool_id, f'SELECT hash FROM {table_name} WHERE hash = %s', (hash,)
+        f'SELECT hash FROM {table_name} WHERE hash = %s', (hash,)
     )
     return len(result) > 0
 
 
-def url_exists(pool_id, dataset, url, materialized=False):
-    table_name = get_table_name(dataset, materialized=materialized)
+def url_exists(dataset, url):
+    table_name = get_table_name(dataset)
     result = query(
-        pool_id, f'SELECT url FROM {table_name} WHERE url = %s', (url,)
+        f'SELECT url FROM {table_name} WHERE url = %s', (url,)
     )
     return len(result) > 0
 
@@ -291,12 +255,7 @@ def snapshot(meta):
         raise ValueError('No valid identifier found.')
 
 
-def assert_materialized(materialized=False):
-    assert not materialized, 'Materialized dataset is read-only.'
-
-
-def update_by_id(pool_id, dataset, id, data, deplicate_ignore=[], tail='', materialized=False):
-    assert_materialized(materialized)
+def update_by_id(dataset, id, data, deplicate_ignore=[], tail=''):
     table_name = get_table_name(dataset)
     if not id:
         raise ValueError('`id` is required.')
@@ -324,7 +283,7 @@ def update_by_id(pool_id, dataset, id, data, deplicate_ignore=[], tail='', mater
     for sql in list_sql:
         resp, err = None, None
         try:
-            resp = query(pool_id, sql[0], sql[1])
+            resp = query(sql[0], sql[1])
         except UniqueViolation as e:
             err = e
             if deplicate_ignore:
@@ -337,14 +296,12 @@ def update_by_id(pool_id, dataset, id, data, deplicate_ignore=[], tail='', mater
     return result
 
 
-def get_unprocessed(pool_id, dataset, limit=10, offset=0):
+def get_unprocessed(dataset, limit=10, offset=0):
     table_name = get_table_name(dataset)
-    resp = query(pool_id,
-                 f'SELECT * FROM {table_name}'
-                 + ' WHERE (processed_storage_id = %s OR vector_siglip IS NULL)'
+    resp = query(f'SELECT * FROM {table_name}'
+                 + ' WHERE (processed_storage_id = %s OR vector IS NULL)'
                  + ' AND id > %s ORDER BY id ASC LIMIT %s',
-                 ('', offset, limit)
-                 )
+                 ('', offset, limit))
     res = []
     for item in resp:
         for field in item.keys():
@@ -355,12 +312,12 @@ def get_unprocessed(pool_id, dataset, limit=10, offset=0):
     return res
 
 
-def batch_insert(pool_id, sql=None, values=None, **kwargs):
-    return execute(pool_id, sql, values, batch=True, **kwargs)
+def batch_insert(sql=None, values=None, **kwargs):
+    return execute(sql, values, batch=True, **kwargs)
 
 
-def query(pool_id, sql=None, values=None, **kwargs):
-    cursor = execute(pool_id, sql, values, **kwargs)
+def query(sql=None, values=None, **kwargs):
+    cursor = execute(sql, values, **kwargs)
     try:
         columns = [desc[0] for desc in cursor.description]
         results = cursor.fetchall()
@@ -370,48 +327,47 @@ def query(pool_id, sql=None, values=None, **kwargs):
     return cursor
 
 
-def get_dataset(pool_id, dataset, materialized=False):
+def get_dataset(dataset, materialized=False):
     check_dataset(dataset)
     ds = Empty()
 
     def init_instant():
-        return init(pool_id, dataset, materialized=ds.materialized)
+        return init(dataset, materialized=ds.materialized)
 
     def get_table_name_instant():
         return get_table_name(dataset, materialized=ds.materialized)
 
     def url_exists_instant(url):
-        return url_exists(pool_id, dataset, url, materialized=ds.materialized)
+        return url_exists(dataset, url, materialized=ds.materialized)
 
     def insert_instant(data, deplicate_ignore=[], tail=''):
         return insert(
-            pool_id, dataset, data, deplicate_ignore=deplicate_ignore,
+            dataset, data, deplicate_ignore=deplicate_ignore,
             tail=tail, materialized=ds.materialized
         )
 
     def update_by_id_instant(id, data, deplicate_ignore=[], tail=''):
         return update_by_id(
-            pool_id, dataset, id, data, deplicate_ignore=deplicate_ignore,
+            dataset, id, data, deplicate_ignore=deplicate_ignore,
             tail=tail, materialized=ds.materialized
         )
 
     def execute_instant(sql, values=None, **kwargs):
-        return execute(pool_id, sql, values, **kwargs)
+        return execute(sql, values, **kwargs)
 
     def query_instant(sql, values=None, **kwargs):
-        return query(pool_id, sql, values, **kwargs)
+        return query(sql, values, **kwargs)
 
     def truncate_instant(force=False):
-        return truncate(pool_id, dataset, force=force, materialized=ds.materialized)
+        return truncate(dataset, force=force, materialized=ds.materialized)
 
     def get_unprocessed_instant(**kwargs):
         assert not ds.materialized, 'No unprocessed data in materialized view.'
-        return get_unprocessed(pool_id, dataset, **kwargs)
+        return get_unprocessed(dataset, **kwargs)
 
     def exists(meta):
         return url_exists_instant(meta['url'])
 
-    ds.pool_id = pool_id
     ds.materialized = materialized
     ds.execute = execute_instant
     ds.init = init_instant
@@ -427,8 +383,7 @@ def get_dataset(pool_id, dataset, materialized=False):
     return ds
 
 
-ensure_vector_extension('pool_1')
-ensure_vector_extension('pool_2')
+ensure_vector_extension()
 
 __all__ = [
     'conn',
