@@ -1,32 +1,35 @@
-from lib.config import GlobalConfig
 from lib.dataset import init
-from lib.embedding import BATCH_SIZE
+from lib.caption import BATCH_SIZE
 from lib.hatchet import push_dataset_event
-from lib.utilitas import sha256
+from lib.config import GlobalConfig
 
 dataset_name = None
-ds = None
 buffer = []
+ds = None
 last_item = 0
-limit = 0
+limit = 8
 
 
 def trigger(force=False):
-    global buffer, dataset_name, ds
+    global buffer
     if force or len(buffer) >= BATCH_SIZE:
         if GlobalConfig.dryrun:
             print(f"Dryrun: {buffer}")
         else:
-            push_dataset_event('embedding_image', dataset_name, buffer)
+            push_dataset_event('caption', dataset_name, buffer)
         buffer = []
 
 
 def get_unprocessed():
-    return ds.get_unprocessed(limit=BATCH_SIZE, offset=last_item)
+    return ds.query(
+        f'SELECT id, processed_storage_id FROM {ds.get_table_name()}'
+        + " WHERE id > %s AND caption_qw25vl != ''"
+        + ' ORDER BY id ASC LIMIT %s', (last_item, BATCH_SIZE)
+    )
 
 
 def run(name):
-    global buffer, last_item, dataset_name, ds
+    global buffer, ds, last_item, dataset_name
     dataset_name = name
     ds = init(name)
     i = 0
@@ -36,14 +39,11 @@ def run(name):
         for meta in meta_items:
             i += 1
             last_item = meta['id']
-            meta_snapshot = ds.snapshot(meta)
-            print(f"Processing row {i} - {last_item}: {meta_snapshot}")
+            print(f"✨ Processing {last_item}: {meta['processed_storage_id']}")
             # print(meta)
             buffer.append({
                 'id': meta['id'],
-                'hash': sha256(meta['processed_storage_id']) if dataset_name == 'alpha' else meta['hash'],
-                'origin_storage_id': None if dataset_name == 'alpha' else meta['origin_storage_id'],
-                'processed_storage_id': meta['processed_storage_id'] if dataset_name == 'alpha' else None,
+                'processed_storage_id': meta['processed_storage_id'],
             })
             trigger()
             if i >= limit > 0:

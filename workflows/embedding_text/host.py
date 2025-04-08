@@ -13,7 +13,7 @@ limit = 0
 
 
 def trigger(force=False):
-    global buffer, dataset_name, ds
+    global buffer
     if force or len(buffer) >= BATCH_SIZE:
         if GlobalConfig.dryrun:
             print(f"Dryrun: {buffer}")
