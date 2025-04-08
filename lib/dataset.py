@@ -137,8 +137,11 @@ def map_meta_megalith_10m(mg_meta):
 
 
 def map_meta_arxiv(ax_meta):
-    hash = ax_meta['abstract_md5']
-    return {
+    if ax_meta.get('abstract_md5') is None:
+        hash = sha256(ax_meta['abstract'])
+    else:
+        hash = ax_meta['abstract_md5']
+    resp = {
         'paper_id': ax_meta['id'],
         'submitter': split_authors(ax_meta['submitter']),
         'authors': split_authors(ax_meta['authors']),
@@ -147,43 +150,28 @@ def map_meta_arxiv(ax_meta):
         'journal_ref': ax_meta['journal-ref'] or '',
         'doi': ax_meta['doi'] or '',
         'report_no': ax_meta['report-no'] or '',
-        'categories': ax_meta['categories'] or [],
-        'versions': ax_meta['versions'] or [],
         'hash': hash,
         'url': f"https://arxiv.org/pdf/{ax_meta['id']}",
-        # 'origin_storage_id': get_address_by_key(os.path.join(
-        #     RULES['arxiv']['s3_path'], f"{hash}.pdf"
-        # )),
+        'origin_storage_id': get_address_by_key(os.path.join(
+            RULES['arxiv']['s3_path'], f"{hash}.pdf"
+        )),
     }
-
-
-def map_meta_arxiv_oai(ax_meta):
-    # 'categories': 'astro-ph.CO',
-    hash = sha256(ax_meta['abstract'])
-    return {
-        'paper_id': ax_meta['id'],
-        'submitter': split_authors(ax_meta['submitter']),
-        'authors': split_authors(ax_meta['authors']),
-        'title': ax_meta['title'],
-        'comments': ax_meta['comments'] or '',
-        'journal_ref': ax_meta['journal-ref'] or '',
-        'doi': ax_meta['doi'] or '',
-        'report_no': ax_meta['report-no'] or '',
-        'categories': [ax_meta['categories']] if len(ax_meta['categories']) > 0 else [],
-        'versions': [r['version'] for r in ax_meta['versions']] if len(ax_meta['versions']) > 0 else [],
-        'license': ax_meta['license'] or '',
-        'abstract': ax_meta['abstract'] or '',
-        'hash': hash,
-        'url': f"https://arxiv.org/pdf/{ax_meta['id']}",
-        # 'origin_storage_id': get_address_by_key(os.path.join(
-        #     RULES['arxiv']['s3_path'], f"{hash}.pdf"
-        # )),
-    }
+    if ax_meta.get('abstract_md5') is None:
+        resp['categories'] = ax_meta['categories'] or []
+        resp['versions'] = ax_meta['versions'] or []
+    else:
+        resp['categories'] = [ax_meta['categories']] if len(
+            ax_meta['categories']) > 0 else []
+        resp['versions'] = [
+            r['version'] for r in ax_meta['versions']
+        ] if len(ax_meta['versions']) > 0 else []
+        resp['license'] = ax_meta['license'] or ''
+        resp['abstract'] = ax_meta['abstract'] or ''
+    return resp
 
 
 RULES = {
     'vintage_450k': {
-        'pool_id': 'pool_1',
         'fields': {
             'caption': 'long_caption',
             'origin_hash': 'hash',
@@ -192,67 +180,52 @@ RULES = {
         's3_path': S3_PATH,
     },
     'cc12m_woman': {
-        'pool_id': 'pool_1',
         'fields': CC12M_JSONL,
         's3_path': S3_PATH,
     },
     'cc12m_cleaned': {
         'fields': CC12M_JSONL,
-        's3_path': 'cc12m_cleaned_v3',
+        's3_path': S3_PATH,
     },
     'cc12m': {
-        'pool_id': 'pool_1',
         'fields': {},
-        's3_path': 'cc12m_v3',
+        's3_path': S3_PATH,
     },
     'pd12m': {
-        'pool_id': 'pool_1',
         'fields': {},
-        's3_path': 'pd12m_v3',
+        's3_path': S3_PATH,
     },
     'wikipedia_featured': {
-        'pool_id': 'pool_1',
         'fields': map_meta_wikipedia_featured,
         's3_path': S3_PATH,
     },
     'megalith_10m': {
-        'pool_id': 'pool_1',
         'fields': map_meta_megalith_10m,
         's3_path': S3_PATH,
     },
     'alpha': {
-        'pool_id': 'pool_2',
         'fields': {},
         's3_path': S3_PATH,
     },
     'testing': {
-        'pool_id': 'pool_1',
         'fields': {},
         's3_path': S3_PATH,
     },
     'wikipedia_en': {
-        'pool_id': 'pool_1',
         'fields': {},
         's3_path': S3_PATH,
     },
     'text_0000001_en': {
-        'pool_id': 'pool_1',
         'fields': {},
-        's3_path': 'text_0000001_en',
+        's3_path': S3_PATH,
     },
     'arxiv': {
-        'pool_id': 'pool_1',
         'fields': map_meta_arxiv,
-        's3_path': 'arxiv',
+        's3_path': S3_PATH,
     },
-    'arxiv_oai': {
-        'pool_id': 'pool_1',
-        'fields': map_meta_arxiv_oai,
-        's3_path': 'arxiv',
-    },
-    'ms_marco': {
-        'pool_id': 'pool_1',
+    'marco': {
         'fields': {},
+        's3_path': S3_PATH,
     }
 }
 
@@ -347,11 +320,7 @@ def get_datasets():
         WHERE table_schema = 'public'
         AND table_type = 'BASE TABLE'
         ORDER BY table_name"""
-    resp_tb_1 = query('pool_1', SQL)
-    resp_tb_2 = query('pool_2', SQL)
-    resp_tb_1 = [{**table, 'pool_id': 'pool_1'} for table in resp_tb_1]
-    resp_tb_2 = [{**table, 'pool_id': 'pool_2'} for table in resp_tb_2]
-    resp = resp_tb_1 + resp_tb_2
+    resp = query(SQL)
     return sorted([table['table_name'][3:] for table in resp])
 
 

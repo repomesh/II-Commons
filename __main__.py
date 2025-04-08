@@ -29,11 +29,19 @@ Demo:
     )
 
     parser.add_argument(
-        '-l', '--load',
+        '-l', '--load_dataset',
         help='load dataset',
         type=str,
         required=False
     )
+
+    parser.add_argument(
+        '-p', '--parser',
+        help='parser: dataset parser: cc12m, cc12m_cleaned, cc12m_woman, vintage_450k, pd12m, wikipedia_featured, megalith_10m, arxiv',
+        type=str,
+        required=False
+    )
+
     parser.add_argument(
         '-w', '--worker',
         help='run worker: fetch, embedding',
@@ -66,6 +74,20 @@ def run_workflow_host(workflow_name: str):
 # def run_workflow_worker():
 #     run_dataset_fetch_worker()
 
+# DATASET_BASE = '/Volumes/Betty/Datasets/meta'
+# DATASETS = {
+#     'cc12m': {'meta_path': 'meta.tsv'},  # done
+#     'cc12m_cleaned': {'meta_path': 'meta.jsonl'},  # done
+#     'cc12m_woman': {'meta_path': 'meta.jsonl'},  # done
+#     'vintage_450k': {'meta_path': 'meta.parquet'},  # done
+#     'PD12M': {'meta_path': 'meta'},  # done
+#     'wikipedia_featured': {'meta_path': 'meta'},  # done
+#     'megalith_10m': {'meta_path': 'meta'},  # Stopped, flickr limitation
+#     'arxiv': {'meta_path': 'arxiv-metadata-hash-abstracts-v0.2.0-2019-03-01.json'},
+#     'arxiv_oai': {'meta_path': 'arxiv-metadata-oai-snapshot.json'},
+# }
+# META_PATH = os.path.join(DATASET_BASE, DATASET, DATASETS[DATASET]['meta_path'])
+
 
 def main() -> Optional[int]:
     try:
@@ -74,9 +96,9 @@ def main() -> Optional[int]:
         if args.verbose:
             logger.setLevel(logging.DEBUG)
 
-        if args.load:
-            logger.info(f"Load dataset: {args.load}")
-            # TODO: 實現文件處理邏輯
+        if args.load_dataset:
+            logger.info(f"Load dataset: {args.load_dataset}")
+            run_dataset_fetch_host(args.parser, args.load_dataset)
         elif args.worker:
             logger.info(f"Run worker: {args.worker}")
             # TODO: 實現輸出邏輯

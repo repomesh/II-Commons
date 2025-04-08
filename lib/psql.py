@@ -72,21 +72,14 @@ def vacuum_table(table_name, force=False):
 
 def get_table_name(dataset):
     check_dataset(dataset)
-    head, tail = 'sc', ''
-    # @todo: temp fix for arxiv_oai
-    if dataset == 'arxiv_oai':
-        dataset = 'arxiv'
-    if dataset == 'ms_marco':
-        return 'ms_marco'
+    head, tail = 'ds', ''
     match dataset:
         case 'alpha':
             head = 'ii'
-        case 'xxx_yyy':
-            tail = 'v3'
-        case 'text_0000001_en' | 'wikipedia_en' | 'arxiv':
+        case 'text_0000001_en' | 'wikipedia_en' | 'arxiv' | 'ms_marco':
             head = 'ts'
     table_name = f'{head}_{dataset}' + (f'_{tail}' if tail else '')
-    # todo: disabled for now by @Leask for speed up SSCD
+    # todo: disabled for now by @Leask for speed up
     # vacuum_table(table_name)
     return table_name
 
@@ -103,37 +96,35 @@ def generate_empty_vector(dim=DIMENSION):
 
 def init(dataset):
     table_name = get_table_name(dataset)
-    if dataset == 'wikipedia_en':
-        list_sql = []
-    elif dataset == 'text_0000001_en':
-        list_sql = []
-    elif dataset == 'arxiv':
-        list_sql = []
-    elif dataset == 'arxiv_oai':
-        list_sql = []
-    elif dataset == 'ms_marco':
-        list_sql = []
-    elif dataset == 'alpha':
-        list_sql = [
-            f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_url_index ON {table_name} (url)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_origin_width_index ON {table_name} (origin_width)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_origin_height_index ON {table_name} (origin_height)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_origin_storage_id_index ON {table_name} (origin_storage_id)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_processed_storage_id_index ON {table_name} (processed_storage_id)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_processed_width_index ON {table_name} (processed_width)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_processed_height_index ON {table_name} (processed_height)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_aspect_ratio_index ON {table_name} (aspect_ratio)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_exif_index ON {table_name} USING gin(exif)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_meta_index ON {table_name} USING gin(meta)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_source_index ON {table_name} USING gin(source)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_created_at_index ON {table_name} (created_at)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_updated_at_index ON {table_name} (updated_at)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING hnsw(vector vector_cosine_ops)',
-        ]
-    else:
-        list_sql = [
-            f"""CREATE TABLE IF NOT EXISTS {table_name} (
-                id BIGSERIAL PRIMARY KEY,
+    result = []
+    match dataset:
+        case 'wikipedia_en' | 'text_0000001_en' | 'arxiv' | 'ms_marco':
+            pass
+        case 'arxiv':
+            pass
+        case 'ms_marco':
+            pass
+        case 'alpha':
+            list_sql = [
+                f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_url_index ON {table_name} (url)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_origin_width_index ON {table_name} (origin_width)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_origin_height_index ON {table_name} (origin_height)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_origin_storage_id_index ON {table_name} (origin_storage_id)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_processed_storage_id_index ON {table_name} (processed_storage_id)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_processed_width_index ON {table_name} (processed_width)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_processed_height_index ON {table_name} (processed_height)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_aspect_ratio_index ON {table_name} (aspect_ratio)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_exif_index ON {table_name} USING gin(exif)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_meta_index ON {table_name} USING gin(meta)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_source_index ON {table_name} USING gin(source)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_created_at_index ON {table_name} (created_at)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_updated_at_index ON {table_name} (updated_at)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING hnsw(vector vector_cosine_ops)',
+            ]
+        case _:
+            list_sql = [
+                f"""CREATE TABLE IF NOT EXISTS {table_name} (
+                    id BIGSERIAL PRIMARY KEY,
                 url VARCHAR NOT NULL,
                 hash VARCHAR(1024) NOT NULL,
                 caption VARCHAR NOT NULL DEFAULT '',
@@ -148,32 +139,30 @@ def init(dataset):
                 aspect_ratio DOUBLE PRECISION NOT NULL DEFAULT 0,
                 exif JSONB NOT NULL DEFAULT '{EMPTY_OBJECT}',
                 meta JSONB NOT NULL DEFAULT '{EMPTY_OBJECT}',
-                vector VECTOR(768) DEFAULT NULL,
+                vector VECTOR(1536) DEFAULT NULL,
                 similarity FLOAT NOT NULL DEFAULT 0,
                 similar_to INT NOT NULL DEFAULT 0,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             )""",
-            f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_url_index ON {table_name} (url)',
-            f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_hash_index ON {table_name} (hash)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_origin_hash_index ON {table_name} (origin_hash)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_origin_width_index ON {table_name} (origin_width)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_origin_height_index ON {table_name} (origin_height)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_origin_storage_id_index ON {table_name} (origin_storage_id)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_processed_storage_id_index ON {table_name} (processed_storage_id)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_processed_width_index ON {table_name} (processed_width)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_processed_height_index ON {table_name} (processed_height)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_aspect_ratio_index ON {table_name} (aspect_ratio)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_exif_index ON {table_name} USING gin(exif)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_meta_index ON {table_name} USING gin(meta)',
-            # todo // drop vector index temporarily
-            # f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING hnsw(vector vector_cosine_ops)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_similarity_index ON {table_name} (similarity)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_similar_to_index ON {table_name} (similar_to)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_created_at_index ON {table_name} (created_at)',
-            f'CREATE INDEX IF NOT EXISTS {table_name}_updated_at_index ON {table_name} (updated_at)',
-        ]
-    result = []
+                f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_url_index ON {table_name} (url)',
+                f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_hash_index ON {table_name} (hash)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_origin_hash_index ON {table_name} (origin_hash)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_origin_width_index ON {table_name} (origin_width)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_origin_height_index ON {table_name} (origin_height)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_origin_storage_id_index ON {table_name} (origin_storage_id)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_processed_storage_id_index ON {table_name} (processed_storage_id)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_processed_width_index ON {table_name} (processed_width)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_processed_height_index ON {table_name} (processed_height)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_aspect_ratio_index ON {table_name} (aspect_ratio)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_exif_index ON {table_name} USING gin(exif)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_meta_index ON {table_name} USING gin(meta)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING hnsw(vector vector_cosine_ops)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_similarity_index ON {table_name} (similarity)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_similar_to_index ON {table_name} (similar_to)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_created_at_index ON {table_name} (created_at)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_updated_at_index ON {table_name} (updated_at)',
+            ]
     for sql in list_sql:
         res = execute(sql)
         result.append(res)

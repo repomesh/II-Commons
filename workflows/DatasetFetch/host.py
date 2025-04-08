@@ -3,25 +3,11 @@ from lib.hatchet import push_dataset_event
 from lib.meta import parse_jsonl, parse_dict_parquet, parse_wiki_featured, parse_tube_parquet
 import os
 
-DATASET_BASE = '/Volumes/Betty/Datasets/meta'
-DATASETS = {
-    'cc12m': {'meta_path': 'meta.tsv'},  # done
-    'cc12m_cleaned': {'meta_path': 'meta.jsonl'},  # done
-    'cc12m_woman': {'meta_path': 'meta.jsonl'},  # done
-    'vintage_450k': {'meta_path': 'meta.parquet'},  # done
-    'PD12M': {'meta_path': 'meta'},  # done
-    'wikipedia_featured': {'meta_path': 'meta'},  # done
-    'megalith_10m': {'meta_path': 'meta'},  # Stopped, flickr limitation
-    'arxiv': {'meta_path': 'arxiv-metadata-hash-abstracts-v0.2.0-2019-03-01.json'},
-    'arxiv_oai': {'meta_path': 'arxiv-metadata-oai-snapshot.json'},
-}
-
-DATASET = 'arxiv_oai'
-META_PATH = os.path.join(DATASET_BASE, DATASET, DATASETS[DATASET]['meta_path'])
 BATCH_SIZE = 1
 
 buffer = []
-ds = init(DATASET)
+ds = None
+dataset_name = None
 last_item = 0
 limit = 0
 
@@ -34,24 +20,26 @@ def stop():
 def trigger(force=False):
     global buffer
     if force or len(buffer) >= BATCH_SIZE:
-        push_dataset_event('fetch', DATASET, buffer)
+        push_dataset_event('fetch', dataset_name, buffer)
         buffer = []
 
 
-def run_host():
-    print(f"Running {DATASET}...")
-    global buffer
+def run_host(parser, meta_path):
+    global buffer, ds, dataset_name
+    dataset_name = parser
+    ds = init(dataset_name)
+    print(f"Running {dataset_name}...")
     i = 0
     meta_files = []
-    if os.path.isdir(META_PATH):
-        for meta_file in sorted(os.listdir(META_PATH)):
-            meta_files.append(os.path.join(META_PATH, meta_file))
+    if os.path.isdir(meta_path):
+        for meta_file in sorted(os.listdir(meta_path)):
+            meta_files.append(os.path.join(meta_path, meta_file))
     else:
-        meta_files.append(META_PATH)
+        meta_files.append(meta_path)
     for meta_file in meta_files:
-        if DATASET == 'wikipedia_featured' and os.path.isdir(meta_file):
+        if dataset_name == 'wikipedia_featured' and os.path.isdir(meta_file):
             meta_items = parse_wiki_featured(meta_file)
-        elif DATASET == 'megalith_10m':
+        elif dataset_name == 'megalith_10m':
             meta_items = parse_tube_parquet(meta_file)
         elif meta_file.endswith('.parquet'):
             meta_items = parse_dict_parquet(meta_file)
