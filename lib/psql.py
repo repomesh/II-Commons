@@ -113,21 +113,9 @@ def init(dataset):
             list_sql = [
                 f"""CREATE TABLE IF NOT EXISTS {table_name} (
                     id BIGSERIAL PRIMARY KEY,
-                    title VARCHAR NOT NULL DEFAULT '',
+                    revid BIGINT NOT NULL,
                     url VARCHAR NOT NULL,
-                    redirect VARCHAR NOT NULL DEFAULT '',
-                    redirecturl VARCHAR NOT NULL DEFAULT '',
-                    contributor_username VARCHAR DEFAULT NULL,
-                    contributor_id BIGINT DEFAULT NULL,
-                    revisionid BIGINT DEFAULT NULL,
-                    parentid BIGINT DEFAULT NULL,
-                    origin BIGINT DEFAULT NULL,
-                    namespace VARCHAR NOT NULL DEFAULT '',
-                    timestamp TIMESTAMP DEFAULT NULL,
-                    comment VARCHAR NOT NULL DEFAULT '',
-                    model VARCHAR DEFAULT NULL,
-                    format VARCHAR DEFAULT NULL,
-                    sha1 VARCHAR DEFAULT NULL,
+                    title VARCHAR NOT NULL DEFAULT '',
                     origin_storage_id VARCHAR(1024) NOT NULL DEFAULT '',
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
