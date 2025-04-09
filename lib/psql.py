@@ -109,6 +109,7 @@ def init(dataset):
     table_name = get_table_name(dataset)
     result, list_sql = [], []
     match dataset:
+        # wikiextractor enwiki-20250201-pages-articles-multistream.xml - -json - o wiki_ext - -no-templates
         case 'wikipedia_en':
             list_sql = [
                 f"""CREATE TABLE IF NOT EXISTS {table_name} (
@@ -144,7 +145,23 @@ def init(dataset):
                 f"CREATE INDEX IF NOT EXISTS {table_name}_chunk_text ON {table_name} USING bm25 (id, title, chunk_text) WITH (key_field='id')",
             ]
         case 'ms_marco':
-            pass
+            list_sql = [
+                f"""CREATE TABLE IF NOT EXISTS {table_name} (
+                    id BIGSERIAL PRIMARY KEY,
+                    item_id BIGINT,
+                    passage_id BIGINT,
+                    answers TEXT[],  -- Array of answers
+                    query TEXT,
+                    passage_text TEXT,
+                    is_selected INTEGER,
+                    url TEXT,
+                    query_id TEXT,
+                    query_type TEXT,
+                    well_formed_answers TEXT[],  -- Array of well formed answers
+                    vector VECTOR(3584)
+                )""",
+                f"CREATE INDEX IF NOT EXISTS {table_name}_passage_text_index ON {table_name} USING bm25(id, passage_text) WITH(key_field='id')",
+            ]
         case 'arxiv':
             list_sql = [
                 f"""CREATE TABLE IF NOT EXISTS {table_name} (
@@ -185,8 +202,6 @@ def init(dataset):
                 f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_paper_id_index ON {table_name} (paper_id)',
                 f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_url_index ON {table_name} (url)',
             ]
-        case 'ms_marco':
-            pass
         case 'alpha':
             list_sql = [
                 f"""CREATE TABLE IF NOT EXISTS {table_name} (
