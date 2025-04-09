@@ -63,6 +63,14 @@ def ensure_vector_extension():
     return res
 
 
+def ensure_bm25_extension():
+    sql = 'CREATE EXTENSION IF NOT EXISTS pg_search'
+    res = execute(sql)
+    if GlobalConfig.DEBUG:
+        print(f'Init: {sql} => {res.statusmessage}')
+    return res
+
+
 def check_dataset(dataset):
     if not dataset:
         raise ValueError('`dataset` is required.')
@@ -101,7 +109,53 @@ def init(dataset):
     table_name = get_table_name(dataset)
     result, list_sql = [], []
     match dataset:
-        case 'wikipedia_en' | 'text_0000001_en' | 'arxiv' | 'ms_marco':
+        case 'wikipedia_en':
+            list_sql = [
+                f"""CREATE TABLE IF NOT EXISTS {table_name} (
+                    id BIGSERIAL PRIMARY KEY,
+                    title VARCHAR NOT NULL DEFAULT '',
+                    url VARCHAR NOT NULL,
+                    redirect VARCHAR NOT NULL DEFAULT '',
+                    redirecturl VARCHAR NOT NULL DEFAULT '',
+                    contributor_username VARCHAR DEFAULT NULL,
+                    contributor_id BIGINT DEFAULT NULL,
+                    revisionid BIGINT DEFAULT NULL,
+                    parentid BIGINT DEFAULT NULL,
+                    origin BIGINT DEFAULT NULL,
+                    namespace VARCHAR NOT NULL DEFAULT '',
+                    timestamp TIMESTAMP DEFAULT NULL,
+                    comment VARCHAR NOT NULL DEFAULT '',
+                    model VARCHAR DEFAULT NULL,
+                    format VARCHAR DEFAULT NULL,
+                    sha1 VARCHAR DEFAULT NULL,
+                    origin_storage_id VARCHAR(1024) NOT NULL DEFAULT '',
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )""",
+            ]
+        case 'text_0000001_en':
+            list_sql = [
+                f"""CREATE TABLE IF NOT EXISTS {table_name} (
+                    id BIGSERIAL PRIMARY KEY,
+                    title VARCHAR NOT NULL,
+                    url VARCHAR NOT NULL,
+                    snapshot VARCHAR NOT NULL,
+                    chunk_index BIGINT NOT NULL,
+                    chunk_text VARCHAR NOT NULL,
+                    source_db VARCHAR NOT NULL,
+                    source_id BIGINT NOT NULL,
+                    vector VECTOR(1536) DEFAULT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )""",
+                f'CREATE INDEX IF NOT EXISTS {table_name}_source_db_index ON {table_name} (source_db)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_source_id_index ON {table_name} (source_id)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_chunk_index_index ON {table_name} (chunk_index)',
+                f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_source_index ON {table_name} (source_db, source_id, chunk_index)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING hnsw(vector vector_cosine_ops)',
+                f"CREATE INDEX IF NOT EXISTS {table_name}_chunk_text ON {table_name} USING bm25 (id, title, chunk_text) WITH (key_field='id')",
+            ]
+        case 'ms_marco':
             pass
         case 'arxiv':
             list_sql = [
@@ -202,7 +256,7 @@ def init(dataset):
                     aspect_ratio DOUBLE PRECISION NOT NULL DEFAULT 0,
                     exif JSONB NOT NULL DEFAULT '{EMPTY_OBJECT}',
                     meta JSONB NOT NULL DEFAULT '{EMPTY_OBJECT}',
-                    vector VECTOR(1536) DEFAULT NULL,
+                    vector VECTOR(1152) DEFAULT NULL,
                     similarity FLOAT NOT NULL DEFAULT 0,
                     similar_to INT NOT NULL DEFAULT 0,
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -432,6 +486,7 @@ def get_dataset(dataset):
 
 
 ensure_vector_extension()
+ensure_bm25_extension()
 
 __all__ = [
     'conn',
