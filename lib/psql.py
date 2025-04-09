@@ -286,7 +286,8 @@ def init(dataset):
     for sql in list_sql:
         res = execute(sql)
         result.append(res)
-        print(f'Init: {sql} => {res.statusmessage}')
+        if GlobalConfig.DEBUG:
+            print(f'Init: {sql} => {res.statusmessage}')
     return result
 
 

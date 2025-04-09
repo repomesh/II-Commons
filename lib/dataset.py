@@ -223,7 +223,7 @@ RULES = {
         'fields': map_meta_arxiv,
         's3_path': S3_PATH,
     },
-    'marco': {
+    'ms_marco': {
         'fields': {},
         's3_path': S3_PATH,
     }

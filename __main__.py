@@ -8,6 +8,7 @@ import atexit
 from typing import Optional
 from lib.config import GlobalConfig
 from workflows.dataset_fetch import run_host as run_dataset_fetch_host, run_worker as run_dataset_fetch_worker
+from bin.fusion_lite import query as query_lite
 
 logging.basicConfig(
     level=GlobalConfig.LOG_LEVEL,
@@ -75,6 +76,13 @@ Demo:
     )
 
     parser.add_argument(
+        '-lq', '--lite-query',
+        help='lite query: topic',
+        type=str,
+        required=False
+    )
+
+    parser.add_argument(
         '-v', '--verbose',
         help='show verbose logs',
         action='store_true'
@@ -131,6 +139,9 @@ def main() -> Optional[int]:
         elif args.worker:
             logger.info(f"Run worker: {args.worker}...")
             run_worker(args.worker)
+        elif args.lite_query:
+            logger.info(f"Run lite query: {args.lite_query}...")
+            query_lite(args.lite_query)
         else:
             logger.info("No action specified")
             return 1
