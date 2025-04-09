@@ -6,6 +6,7 @@ from transformers import AutoTokenizer
 from transformers.tokenization_utils_base import BatchEncoding
 
 _tokenizer, _model = None, None
+model_name = 'jinaai/jina-embeddings-v3'
 
 
 def init():
@@ -13,10 +14,10 @@ def init():
     global _tokenizer, _model
     if not _tokenizer:
         _tokenizer = AutoTokenizer.from_pretrained(
-            'jinaai/jina-embeddings-v3', trust_remote_code=True)
+            model_name, trust_remote_code=True)
     if not _model:
         _model = AutoModel.from_pretrained(
-            'jinaai/jina-embeddings-v3', trust_remote_code=True)
+            model_name, trust_remote_code=True)
     return _model, _tokenizer
 
 
