@@ -9,6 +9,7 @@ from typing import Optional
 from lib.config import GlobalConfig
 from workflows.dataset_fetch import run_host as run_dataset_fetch_host, run_worker as run_dataset_fetch_worker
 from bin.fusion_lite import query as query_lite
+from bin.analyze import run as run_analyze
 
 logging.basicConfig(
     level=GlobalConfig.LOG_LEVEL,
@@ -76,6 +77,13 @@ Demo:
     )
 
     parser.add_argument(
+        '-a', '--analyze',
+        help='analyze: analyze',
+        action='store_true',
+        required=False
+    )
+
+    parser.add_argument(
         '-lq', '--lite-query',
         help='lite query: topic',
         type=str,
@@ -139,6 +147,9 @@ def main() -> Optional[int]:
         elif args.worker:
             logger.info(f"Run worker: {args.worker}...")
             run_worker(args.worker)
+        elif args.analyze:
+            logger.info(f"Run analyze...")
+            run_analyze()
         elif args.lite_query:
             logger.info(f"Run lite query: {args.lite_query}...")
             query_lite(args.lite_query)
