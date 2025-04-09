@@ -8,8 +8,8 @@ import tempfile
 import time
 import uuid
 
-WORKFLOW = 'DatasetFetch'
-WORKER = 'DatasetFetch'
+WORKFLOW = 'Fetch'
+WORKER = 'Fetch'
 WORKFLOW_LIMIT = int(os.environ.get('WORKFLOW_LIMIT_DATASETFETCH', '500'))
 WORKER_LIMIT = int(os.environ.get('WORKER_LIMIT_DATASETFETCH', '30'))
 i = 0

@@ -7,7 +7,7 @@ import sys
 import atexit
 from typing import Optional
 from lib.config import GlobalConfig
-from workflows.dataset_fetch import run_host as run_dataset_fetch_host, run_worker as run_dataset_fetch_worker
+from workflows.fetch import run_host as run_dataset_fetch_host, run_worker as run_dataset_fetch_worker
 from workflows.embedding_text import run_host as run_embedding_text_host, run_worker as run_embedding_text_worker
 from workflows.embedding_image import run_host as run_embedding_image_host, run_worker as run_embedding_image_worker
 from workflows.caption import run_host as run_caption_host, run_worker as run_caption_worker
