@@ -2,7 +2,7 @@ from lib.dataset import init
 from lib.hatchet import SCHEDULE_TIMEOUT, STEP_RETRIES, STEP_TIMEOUT, concurrency, hatchet, logs
 from lib.psql import batch_insert
 from lib.s3 import download_file
-from lib.late import chunking
+from lib.late import process
 from lib.utilitas import json_dumps, sha256, read_json
 import os
 import tempfile
@@ -93,7 +93,7 @@ class EmbeddingWorkflow:
             try:
                 log('Embedding Documents...')
                 snapshot = json_dumps(txt['id'])
-                chunks, _, embeddings = chunking(txt['text'])
+                chunks, _, embeddings = process(txt['text'])
             except Exception as e:
                 log(f'❌ ({snapshot}) Error embedding: {e}')
             if chunks is not None and embeddings is not None:

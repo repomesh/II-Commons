@@ -1,12 +1,16 @@
 # https://colab.research.google.com/drive/15vNZb6AsU7byjYoaEtXuNu567JWNzXOz#scrollTo=58a8fbc1e477db48
 
 import numpy as np
+import re
 from transformers import AutoModel
 from transformers import AutoTokenizer
 from transformers.tokenization_utils_base import BatchEncoding
 
+# model_name = 'jinaai/jina-embeddings-v3'
+model_name = 'jinaai/jina-embeddings-v2-base-en'
 _tokenizer, _model = None, None
-model_name = 'jinaai/jina-embeddings-v3'
+sentence_endings = ['.', '?', '!', '。', '？', '！']
+MAX_LENGTH = 8192
 
 
 def init():
@@ -33,7 +37,6 @@ def chunk_by_sentences(input_text: str, tokenizer: callable = None):
         tokenizer = _tokenizer
     inputs = tokenizer(input_text, return_tensors='pt',
                        return_offsets_mapping=True)
-    sentence_endings = ['.', '?', '!', '。', '？', '！']
     sentence_ending_ids = [
         tokenizer.convert_tokens_to_ids(se) for se in sentence_endings
     ]
@@ -78,7 +81,8 @@ def pool_embeddings(
             if (end - start) >= 1
         ]
         pooled_embeddings = [
-            embedding.detach().cpu().numpy() for embedding in pooled_embeddings
+            embedding.detach().float().cpu().numpy()
+            for embedding in pooled_embeddings
         ]
         outputs.append(pooled_embeddings)
     return outputs
@@ -93,6 +97,29 @@ def chunking(input_text, tokenizer: callable = None):
     inputs = _tokenizer(input_text, return_tensors='pt')
     model_output = _model(**inputs)
     embeddings = pool_embeddings(model_output, [span_annotations])[0]
+    return chunks, span_annotations, embeddings
+
+
+def process(text):
+    texts = text.split('.')
+    text_chunks, sub_texts = [], []
+    chunks, span_annotations, embeddings = [], [], []
+    while len(texts) > 0:
+        t = texts[0]
+        texts = texts[1:]
+        if len(' '.join([*sub_texts, t])) > MAX_LENGTH:
+            if len(sub_texts) > 0:
+                text_chunks.append('\n'.join(sub_texts))
+            sub_texts = [t]
+        else:
+            sub_texts.append(t)
+    if len(sub_texts) > 0:
+        text_chunks.append('.'.join(sub_texts))
+    for c in text_chunks:
+        _chunks, _span_annotations, _embeddings = chunking(c)
+        chunks.extend(_chunks)
+        span_annotations.extend(_span_annotations)
+        embeddings.extend(_embeddings)
     return chunks, span_annotations, embeddings
 
 
@@ -111,14 +138,20 @@ def cos_sim(x, y):
 
 
 __all__ = [
-    'chunk_by_sentences', 'pool_embeddings', 'chunking', 'get_tokenizer', 'get_model'
+    'chunk_by_sentences',
+    'chunking',
+    'get_model',
+    'get_tokenizer',
+    'pool_embeddings',
+    'process',
 ]
 
 
 if __name__ == '__main__':
+    # chunks, span_annotations, embeddings = process("""Berlin (/bɜːrˈlɪn/ bur-LIN; German: [bɛʁˈliːn] ⓘ)[10] is the capital and largest city of Germany, by both area and population.[11] With 3.7 million inhabitants,[5] it has the highest population within its city limits of any city in the European Union. The city is also one of the states of Germany, being the third smallest state in the country by area. Berlin is surrounded by the state of Brandenburg, and Brandenburg's capital Potsdam is nearby. The urban area of Berlin has a population of over 4.6 million and is therefore the most populous urban area in Germany.[6][12] The Berlin-Brandenburg capital region has around 6.2 million inhabitants and is Germany's second-largest metropolitan region after the Rhine-Ruhr region,[5] as well as the fifth-biggest metropolitan region by GDP in the European Union.[13]""")
     init()
     input_text = """Berlin (/bɜːrˈlɪn/ bur-LIN; German: [bɛʁˈliːn] ⓘ)[10] is the capital and largest city of Germany, by both area and population.[11] With 3.7 million inhabitants,[5] it has the highest population within its city limits of any city in the European Union. The city is also one of the states of Germany, being the third smallest state in the country by area. Berlin is surrounded by the state of Brandenburg, and Brandenburg's capital Potsdam is nearby. The urban area of Berlin has a population of over 4.6 million and is therefore the most populous urban area in Germany.[6][12] The Berlin-Brandenburg capital region has around 6.2 million inhabitants and is Germany's second-largest metropolitan region after the Rhine-Ruhr region,[5] as well as the fifth-biggest metropolitan region by GDP in the European Union.[13]"""
-    chunks, span_annotations, embeddings = chunking(input_text)
+    chunks, span_annotations, embeddings = process(input_text)
     embeddings_traditional_chunking = _model.encode(chunks)
     berlin_embedding = _model.encode('Berlin')
     for chunk, new_embedding, trad_embeddings in zip(chunks, embeddings, embeddings_traditional_chunking):

@@ -128,8 +128,12 @@ def init(dataset):
             match dataset:
                 case 'text_0000001_en':
                     vector_dim = 1536
+                # Jina Embedding v3
+                # case 'text_0000002_en':
+                #     vector_dim = 1024
+                # Jina Embedding v2
                 case 'text_0000002_en':
-                    vector_dim = 1024
+                    vector_dim = 768
             list_sql.extend([
                 f"""CREATE TABLE IF NOT EXISTS {table_name} (
                     id BIGSERIAL PRIMARY KEY,
