@@ -10,16 +10,17 @@ buffer = []
 ds = None
 last_item = 0
 limit = 0
+default_ds_name = 'text_0000002_en'
 
 
 def trigger(force=False):
     global buffer
     if force or len(buffer) >= BATCH_SIZE:
-        if GlobalConfig.dryrun:
+        if GlobalConfig.DRYRUN:
             print(f"Dryrun: {buffer}")
         else:
             if dataset_name == 'wikipedia_en':
-                ds_name = 'text_0000001_en'
+                ds_name = default_ds_name
             else:
                 ds_name = dataset_name
             push_dataset_event('embedding_text', ds_name, buffer)
@@ -31,17 +32,16 @@ def get_unprocessed():
         case 'wikipedia_en':
             return ds.query(
                 f"SELECT id, origin_storage_id FROM {ds.get_table_name()}"
-                + ' WHERE id NOT IN (select source_id from ts_text_0000001_en)'
-                + ' AND namespace = %s AND redirecturl = %s'
-                + ' AND id > %s ORDER BY id ASC LIMIT %s',
-                ('Page', '', last_item, BATCH_SIZE)
+                + f' WHERE id > %s ORDER BY id ASC LIMIT %s',
+                (last_item, BATCH_SIZE)
             )
         case _:
             raise ValueError(f'Unsupported dataset: {dataset_name}')
 
 
 def run(name):
-    global buffer, last_item, ds
+    global buffer, last_item, ds, dataset_name
+    dataset_name = name
     ds = init(name)
     i = 0
     meta_items = get_unprocessed()

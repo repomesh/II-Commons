@@ -2,7 +2,7 @@ from lib.dataset import init
 from lib.hatchet import SCHEDULE_TIMEOUT, STEP_RETRIES, STEP_TIMEOUT, concurrency, hatchet, logs
 from lib.psql import batch_insert
 from lib.s3 import download_file
-from lib.text import process
+from lib.late import chunking
 from lib.utilitas import json_dumps, sha256, read_json
 import os
 import tempfile
@@ -98,30 +98,31 @@ class EmbeddingWorkflow:
                 continue
         meta_items = []
         for i, txt in enumerate(texts):
-            end_res = None
+            chunks, embeddings = None, None
             try:
                 log('Embedding Documents...')
                 snapshot = json_dumps(txt['id'])
-                end_res = process(txt['text'])
+                chunks, _, embeddings = chunking(txt['text'])
+                print(chunks, embeddings, len(chunks),
+                      len(embeddings), len(embeddings[0]))
             except Exception as e:
                 log(f'❌ ({snapshot}) Error embedding: {e}')
-            if end_res is not None:
+            if chunks is not None and embeddings is not None:
                 if context.done():
                     log(f"❌ Job canceled: {args['dataset']}.")
                     return {'dataset': args['dataset'], 'meta_items': []}
                 snapshot = txt['meta']['url']
                 items = []
-                for j in range(len(end_res)):
-                    chk = end_res[j]
+                for j in range(len(chunks)):
                     items.append({
                         'title': txt['meta']['title'],
                         'url': txt['meta']['url'],
                         'snapshot': txt['origin_storage_id'],
                         'chunk_index': j,
-                        'chunk_text': chk['chunk'],
+                        'chunk_text': chunks[j],
                         'source_db': args['dataset'],
                         'source_id': txt['id'],
-                        'vector': chk['embedding'],
+                        'vector': embeddings[j],
                     })
                 try:
                     insert_records_batch(ds, items)

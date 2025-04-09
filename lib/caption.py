@@ -13,13 +13,12 @@ from io import BytesIO
 from openai import OpenAI
 from lib.api import CaptionAPI
 
+BATCH_SIZE = 8  # 64
+MAX_SIZE = 512
 MODEL_NAME = os.getenv('CAPTION_MODEL') or 'Qwen/Qwen2.5-VL-7B-Instruct'
 SAMPLING_PARAMS = SamplingParams(
     temperature=0.1, max_tokens=512, stop_token_ids=None
 )
-BATCH_SIZE = 8  # 64
-
-MAX_SIZE = 512
 
 model = None
 prompts = None

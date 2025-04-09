@@ -21,7 +21,7 @@ def stop():
 def trigger(force=False):
     global buffer
     if force or len(buffer) >= BATCH_SIZE:
-        if GlobalConfig.dryrun:
+        if GlobalConfig.DRYRUN:
             print(f"Dryrun: {buffer}")
         else:
             push_dataset_event('fetch', dataset_name, buffer)

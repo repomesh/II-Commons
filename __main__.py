@@ -8,6 +8,9 @@ import atexit
 from typing import Optional
 from lib.config import GlobalConfig
 from workflows.dataset_fetch import run_host as run_dataset_fetch_host, run_worker as run_dataset_fetch_worker
+from workflows.embedding_text import run_host as run_embedding_text_host, run_worker as run_embedding_text_worker
+from workflows.embedding_image import run_host as run_embedding_image_host, run_worker as run_embedding_image_worker
+from workflows.caption import run_host as run_caption_host, run_worker as run_caption_worker
 from bin.fusion_lite import query as query_lite
 from bin.analyze import run as run_analyze
 
@@ -31,6 +34,12 @@ atexit.register(cleanup)
 def run_worker(worker_name: str):
     if worker_name == 'dataset_fetch':
         run_dataset_fetch_worker()
+    elif worker_name == 'embedding_text':
+        run_embedding_text_worker()
+    elif worker_name == 'embedding_image':
+        run_embedding_image_worker()
+    elif worker_name == 'caption':
+        run_caption_worker()
     else:
         logger.error(f"Invalid worker name: {worker_name}")
         return 1
@@ -58,6 +67,13 @@ Demo:
     parser.add_argument(
         '-n', '--name',
         help='dataset name: cc12m, cc12m_cleaned, cc12m_woman, vintage_450k, pd12m, wikipedia_featured, megalith_10m, arxiv',
+        type=str,
+        required=False
+    )
+
+    parser.add_argument(
+        '-o', '--host',
+        help='run host: fetch, embedding_text, embedding_image, caption',
         type=str,
         required=False
     )
@@ -91,13 +107,13 @@ Demo:
     )
 
     parser.add_argument(
-        '-v', '--verbose',
+        '-e', '--verbose',
         help='show verbose logs',
         action='store_true'
     )
 
     parser.add_argument(
-        '--version',
+        '-v', '--version',
         help='show version information',
         action='version',
         version=f'dataset-tools {GlobalConfig.VERSION}'
@@ -106,12 +122,24 @@ Demo:
     return parser.parse_args()
 
 
-def run_workflow_host(workflow_name: str):
-    if workflow_name == 'dataset_fetch':
-        run_dataset_fetch_host()
-    else:
-        logger.error(f"Invalid workflow name: {workflow_name}")
-        return 1
+def run_workflow_host(
+    workflow_name: str,
+    dataset_name: str,
+    dataset_path: str = None
+):
+    match workflow_name:
+        case 'dataset_fetch':
+            run_dataset_fetch_host(dataset_name, dataset_path)
+        case 'embedding_text':
+            run_embedding_text_host(dataset_name)
+        case 'embedding_image':
+            run_embedding_image_host(dataset_name)
+        case 'caption':
+            run_caption_host(dataset_name)
+        case _:
+            logger.error(f"Invalid workflow name: {workflow_name}")
+            return 1
+    return 0
 
 # def run_workflow_worker():
 #     run_dataset_fetch_worker()
@@ -141,9 +169,13 @@ def main() -> Optional[int]:
         if args.dryrun:
             GlobalConfig.set_dryrun(True)
 
-        if args.dataset:
-            logger.info(f"Load dataset: {args.dataset}...")
-            run_dataset_fetch_host(args.name, args.dataset)
+        if args.dataset or args.host:
+            logger.info(f"Run host: {args.name}...")
+            run_workflow_host(
+                args.host or 'dataset_fetch',
+                args.name,
+                args.dataset
+            )
         elif args.worker:
             logger.info(f"Run worker: {args.worker}...")
             run_worker(args.worker)

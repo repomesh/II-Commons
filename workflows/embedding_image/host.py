@@ -14,7 +14,7 @@ limit = 0
 def trigger(force=False):
     global buffer, dataset_name, ds
     if force or len(buffer) >= BATCH_SIZE:
-        if GlobalConfig.dryrun:
+        if GlobalConfig.DRYRUN:
             print(f"Dryrun: {buffer}")
         else:
             push_dataset_event('embedding_image', dataset_name, buffer)
