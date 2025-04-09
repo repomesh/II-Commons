@@ -3,10 +3,7 @@ import os
 from google import genai
 from google.genai import types
 
-# MODEL = "gemma-3-27b-it"
 MODEL = "gemini-2.0-flash"
-# MODEL = "gemini-2.0-pro-exp-02-05"
-# MODEL = "gemini-2.0-flash-thinking-exp-01-21"
 
 
 def generate(prompt, json=False):
