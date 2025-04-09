@@ -17,253 +17,256 @@ tp_prompt = """You are an AI query analyzer designed to generate a list of short
 ds = init('text_0000001_en')
 di = init('alpha')
 
-# Topic
-topic = "I want to know information about documentaries related to World War II."
-# topic = "Knowledge of Fruit Classification"
-# topic = "I want to know information about diabetes diet."
 
-# Generate embedding phrases and searching keywords
-print(">>> Question: ", topic)
-print("> Generating embedding phrases and searching keywords...")
-tp_resp = generate(f"{tp_prompt} {topic}", json=True)
-tp_resp = json.loads(tp_resp)
-print(f'= Phrases: {", ".join(tp_resp["sentences"])}')
-print(f'= Keywords: {", ".join(tp_resp["keywords"])}')
+def query(topic):
+    # Topic
+    topic = "I want to know information about documentaries related to World War II."
+    # topic = "Knowledge of Fruit Classification"
+    # topic = "I want to know information about diabetes diet."
 
-# Embedding phrases
-print("> Embedding phrases...")
-eb_resp = encode_text(tp_resp["sentences"])
+    # Generate embedding phrases and searching keywords
+    print(">>> Question: ", topic)
+    print("> Generating embedding phrases and searching keywords...")
+    tp_resp = generate(f"{tp_prompt} {topic}", json=True)
+    tp_resp = json.loads(tp_resp)
+    print(f'= Phrases: {", ".join(tp_resp["sentences"])}')
+    print(f'= Keywords: {", ".join(tp_resp["keywords"])}')
 
-# Embedding phrases search
-print("> Embedding vector search...")
-e_res = []
-for e in eb_resp:
-    e_res.append(ds.query(
-        f"""SELECT id, title, url, snapshot, source_db, source_id, chunk_index, chunk_text,
-        (vector <=> %s::vector) as distance,
-        ((2 - (vector <=> %s::vector)) / 2) as similarity
-        FROM {ds.get_table_name()} order by (vector <=> %s::vector) ASC OFFSET %s LIMIT %s""",
-        (e, e, e, 0, 100)
-    ))
+    # Embedding phrases
+    print("> Embedding phrases...")
+    eb_resp = encode_text(tp_resp["sentences"])
 
-# Unique embedding phrases search results
-unique_e_res = {}
-for result_set in e_res:
-    for row in result_set:
+    # Embedding phrases search
+    print("> Embedding vector search...")
+    e_res = []
+    for e in eb_resp:
+        e_res.append(ds.query(
+            f"""SELECT id, title, url, snapshot, source_db, source_id, chunk_index, chunk_text,
+            (vector <=> %s::vector) as distance,
+            ((2 - (vector <=> %s::vector)) / 2) as similarity
+            FROM {ds.get_table_name()} order by (vector <=> %s::vector) ASC OFFSET %s LIMIT %s""",
+            (e, e, e, 0, 100)
+        ))
+
+    # Unique embedding phrases search results
+    unique_e_res = {}
+    for result_set in e_res:
+        for row in result_set:
+            result_id = row['id']
+            result_distance = row['distance']
+            if result_id not in unique_e_res or result_distance < unique_e_res[result_id]['distance']:
+                unique_e_res[result_id] = row
+    e_res = sorted(list(unique_e_res.values()), key=lambda x: x['distance'])
+
+    # Print embedding phrases search results
+    # print("Vector Results:")
+    # print(f"{'ID':<10}{'Distance':<15}{'Similarity':<15}{'Title'}")
+    # print("-" * 50)
+    # for row in e_res:
+    #     print(
+    #         f"{row['id']:<10}{row['distance']:<15.6f}{row['similarity']:<15.6f}{row['title']}")
+
+    # BM25 search
+    print("> BM25 search...")
+    b_res = []
+    for b in tp_resp['keywords']:
+        b_res.append(ds.query(
+            f"""SELECT id, title, url, snapshot, source_db, source_id, chunk_index, chunk_text, paradedb.score(id) as score
+            FROM {ds.get_table_name()} WHERE title @@@ %s or url @@@ %s or chunk_text @@@ %s
+            ORDER BY score DESC OFFSET %s LIMIT %s""",
+            (b, b, b, 0, 100)
+        ))
+
+    # Unique BM25 search results
+    unique_b_res = {}
+    for result_set in b_res:
+        for row in result_set:
+            result_id = row['id']
+            result_score = row['score']
+            if result_id not in unique_b_res or result_score > unique_b_res[result_id]['score']:
+                unique_b_res[result_id] = row
+    b_res = sorted(list(unique_b_res.values()),
+                   key=lambda x: x['score'], reverse=True)
+
+    # Print BM25 search results
+    # print("Sorted BM25 Results:")
+    # print(f"{'ID':<10}{'Score':<15}{'Title'}")
+    # print("-" * 50)
+    # for row in b_res:
+    #     print(f"{row['id']:<10}{row['score']:<15.6f}{row['title']}")
+
+    # Image search
+    # print("> Image search...")
+    # ie_resp = encode_text_sig(tp_resp['keywords'] + tp_resp['sentences'])
+    # is_res = []
+    # for ir in ie_resp:
+    #     is_res.append(di.query(
+    #         f"""SELECT id, url, caption, processed_storage_id, aspect_ratio, exif, meta, source, vector_siglip,
+    #         (vector_siglip <=> %s::vector) as distance,
+    #         ((2 - (vector_siglip <=> %s::vector)) / 2) as similarity
+    #         FROM {di.get_table_name()} ORDER BY (vector_siglip <=> %s::vector) ASC OFFSET %s LIMIT %s""",
+    #         (ir, ir, ir, 0, 100)
+    #     ))
+    # Building INDEXING!
+
+    # Unique Image search results
+    # unique_is_res = {}
+    # for result_set in is_res:
+    #     for row in result_set:
+    #         result_id = row['id']
+    #         result_distance = row['distance']
+    #         if result_id not in unique_is_res or result_distance < unique_is_res[result_id]['distance']:
+    #             unique_is_res[result_id] = row
+    # is_res = sorted(list(unique_is_res.values()), key=lambda x: x['distance'])
+
+    # Print Image search results
+    # print("Image Results:")
+    # print(f"{'ID':<10}{'Distance':<15}{'Similarity':<15}{'Title'}")
+    # print("-" * 50)
+    # for row in is_res:
+    #     print(f"{row['id']:<10}{row['distance']:<15.6f}{row['similarity']:<15.6f}{row['title']}")
+
+    # Merge Vector and BM25 search results
+    merged_results = {}
+    for row in e_res:
         result_id = row['id']
-        result_distance = row['distance']
-        if result_id not in unique_e_res or result_distance < unique_e_res[result_id]['distance']:
-            unique_e_res[result_id] = row
-e_res = sorted(list(unique_e_res.values()), key=lambda x: x['distance'])
-
-# Print embedding phrases search results
-# print("Vector Results:")
-# print(f"{'ID':<10}{'Distance':<15}{'Similarity':<15}{'Title'}")
-# print("-" * 50)
-# for row in e_res:
-#     print(
-#         f"{row['id']:<10}{row['distance']:<15.6f}{row['similarity']:<15.6f}{row['title']}")
-
-# BM25 search
-print("> BM25 search...")
-b_res = []
-for b in tp_resp['keywords']:
-    b_res.append(ds.query(
-        f"""SELECT id, title, url, snapshot, source_db, source_id, chunk_index, chunk_text, paradedb.score(id) as score
-        FROM {ds.get_table_name()} WHERE title @@@ %s or url @@@ %s or chunk_text @@@ %s
-        ORDER BY score DESC OFFSET %s LIMIT %s""",
-        (b, b, b, 0, 100)
-    ))
-
-# Unique BM25 search results
-unique_b_res = {}
-for result_set in b_res:
-    for row in result_set:
-        result_id = row['id']
-        result_score = row['score']
-        if result_id not in unique_b_res or result_score > unique_b_res[result_id]['score']:
-            unique_b_res[result_id] = row
-b_res = sorted(list(unique_b_res.values()),
-               key=lambda x: x['score'], reverse=True)
-
-# Print BM25 search results
-# print("Sorted BM25 Results:")
-# print(f"{'ID':<10}{'Score':<15}{'Title'}")
-# print("-" * 50)
-# for row in b_res:
-#     print(f"{row['id']:<10}{row['score']:<15.6f}{row['title']}")
-
-# Image search
-# print("> Image search...")
-# ie_resp = encode_text_sig(tp_resp['keywords'] + tp_resp['sentences'])
-# is_res = []
-# for ir in ie_resp:
-#     is_res.append(di.query(
-#         f"""SELECT id, url, caption, processed_storage_id, aspect_ratio, exif, meta, source, vector_siglip,
-#         (vector_siglip <=> %s::vector) as distance,
-#         ((2 - (vector_siglip <=> %s::vector)) / 2) as similarity
-#         FROM {di.get_table_name()} ORDER BY (vector_siglip <=> %s::vector) ASC OFFSET %s LIMIT %s""",
-#         (ir, ir, ir, 0, 100)
-#     ))
-# Building INDEXING!
-
-# Unique Image search results
-# unique_is_res = {}
-# for result_set in is_res:
-#     for row in result_set:
-#         result_id = row['id']
-#         result_distance = row['distance']
-#         if result_id not in unique_is_res or result_distance < unique_is_res[result_id]['distance']:
-#             unique_is_res[result_id] = row
-# is_res = sorted(list(unique_is_res.values()), key=lambda x: x['distance'])
-
-# Print Image search results
-# print("Image Results:")
-# print(f"{'ID':<10}{'Distance':<15}{'Similarity':<15}{'Title'}")
-# print("-" * 50)
-# for row in is_res:
-#     print(f"{row['id']:<10}{row['distance']:<15.6f}{row['similarity']:<15.6f}{row['title']}")
-
-# Merge Vector and BM25 search results
-merged_results = {}
-for row in e_res:
-    result_id = row['id']
-    merged_results[result_id] = {
-        **row,
-        'score': None
-    }
-for row in b_res:
-    result_id = row['id']
-    if result_id in merged_results:
-        merged_results[result_id].update(row)
-    else:
         merged_results[result_id] = {
             **row,
-            'distance': None,
-            'similarity': None
+            'score': None
         }
-m_res = sorted(merged_results.values(
-), key=lambda x: x['distance'] if x['distance'] is not None else MAX_DISTANCE)
-
-# Print merged results
-# print("Merged Results:")
-# print(f"{'ID':<10}{'Distance':<15}{'Score':<15}{'Title'}")
-# print("-" * 50)
-# for row in m_res:
-#     print(f"{row['id']:<10}{row['distance']:<15.6f}{row['score']:<15.6f}{row['title']}")
-
-# Merge chunks
-print("> Merge chunks...")
-merged_results = {}
-for row in m_res:
-    group_key = (row['source_id'], row['source_db'])
-    if group_key not in merged_results:
-        merged_results[group_key] = {**row, 'chunks': []}
-    merged_results[group_key]['distance'] = min(
-        merged_results[group_key]['distance'] if merged_results[group_key]['distance'] is not None else MAX_DISTANCE,
-        row['distance'] if row['distance'] is not None else MAX_DISTANCE
-    )
-    merged_results[group_key]['similarity'] = max(
-        merged_results[group_key]['similarity'] if merged_results[group_key]['similarity'] is not None else 0,
-        row['similarity'] if row['similarity'] is not None else 0
-    )
-    merged_results[group_key]['score'] = max(
-        merged_results[group_key]['score'] if merged_results[group_key]['score'] is not None else 0,
-        row['score'] if row['score'] is not None else 0
-    )
-    merged_results[group_key]['chunks'].append({
-        'chunk_index': row['chunk_index'],
-        'chunk_text': row['chunk_text']
-    })
-    merged_results[group_key]['chunks'].sort(key=lambda x: x['chunk_index'])
-    merged_results[group_key].pop('chunk_index', None)
-    merged_results[group_key].pop('chunk_text', None)
-m_res = sorted(merged_results.values(
-), key=lambda x: x['distance'] if x['distance'] is not None else MAX_DISTANCE)
-
-# Print merged results
-# print("Merged Results:")
-# print(f"{'ID':<10}{'Distance':<15}{'Score':<15}{'Title'}")
-# print("-" * 50)
-# for row in m_res:
-#     print(f"{row['id']:<10}{row['distance']:<15.6f}{row['score']:<15.6f}{row['title']}")
-
-# Fusion results
-
-
-def fusion_sort_key(result):
-    distance = result['distance'] if result['distance'] is not None else MAX_DISTANCE
-    score = result['score'] if result['score'] is not None else 0
-    normalized_score = score / MAX_SCORE
-    normalized_distance = 1 - (distance / MAX_DISTANCE)
-    vector_weight = 0.55
-    bm25_weight = 0.45
-    fusion_score = vector_weight * normalized_distance + bm25_weight * normalized_score
-    return fusion_score
-
-
-m_res = sorted(m_res, key=fusion_sort_key, reverse=True)
-m_res = m_res[:100]
-
-# Print fusion results
-print("Fusion Results:")
-print(f"{'ID':<10}    {'Distance':<15}    {'Score':<15}    {'Title':<50}    {'URL':<50}    {'Chunk Index':<15}    {'Chunk Text':<90}")
-print("-" * 200)
-for row in m_res:
-    distance = f"{row['distance']:.4f}" if isinstance(
-        row['distance'], (int, float)) else "N/A"
-    score = f"{row['score']:.4f}" if isinstance(
-        row['score'], (int, float)) else "N/A"
-    url = row.get('url', 'N/A')
-    if len(row['title']) >= 50:
-        title = f"{row['title'][:47]}..."
-    else:
-        title = row['title']
-    if len(url) >= 50:
-        url = f"{url[:47]}..."
-    for index, chunk in enumerate(row['chunks']):
-        chunk_text = chunk['chunk_text'].replace('\n', ' ')
-        if len(chunk_text) >= 80:
-            start = (len(chunk_text) - 80) // 2
-            chunk_text = f"...{chunk_text[start:start + 80 - 6]}..."
-        if index == 0:
-            print(f"{row['id']:<10}    {distance:<15}    {score:<15}    {title:<50}    {url:<50}    {chunk['chunk_index']:<15}    {chunk_text:<80}")
+    for row in b_res:
+        result_id = row['id']
+        if result_id in merged_results:
+            merged_results[result_id].update(row)
         else:
-            print(
-                f"{'':<10}    {'':<15}    {'':<15}    {'':<50}    {'':<50}    {chunk['chunk_index']:<15}    {chunk_text:<80}")
+            merged_results[result_id] = {
+                **row,
+                'distance': None,
+                'similarity': None
+            }
+    m_res = sorted(merged_results.values(
+    ), key=lambda x: x['distance'] if x['distance'] is not None else MAX_DISTANCE)
 
-# Using LLM to verify the results
-print("> Using LLM to verify the results...")
-llm_filter_pmt = f"""You are an intelligent AI document retrieval expert, and you have been asked a question: "{topic}".\n\nBelow is a document retrieval result that may relate to this question. Please read this document. Based on your judgment, if you find any information within the text that aids in answering the question, Extract and organize the useful information. If not, return an empty string. For matching documents, be sure to extract the corresponding content from the original text, rather than merely returning a summary. When organizing information, please ensure the original format and context flow smoothly, making the content relatively complete and readable. If it is in Markdown format, retain the Markdown hyperlinks and image references. If it is other formatted text like XML or HTML, please convert it to Markdown format. Please delete and output any other invalid formats and citation marks. For content you consider useless or of little use, please output an empty string. Please output in JSON format {{"result": "SUMMARY"}} or {{"result": ""}}. Here are the text excerpts you need to process:\n\n"""
-task_hash = sha256(topic)
-temp_path = tempfile.TemporaryDirectory(suffix=f'-{task_hash}')
-llm_res = []
-MAX_RESULTS = 10
-for i, row in enumerate(m_res):
-    try:
-        file_name = os.path.join(temp_path.name, f"{row['id']}.json")
-        download_file(row['snapshot'], file_name)
-        file = read_json(file_name)
-        file = file['text']
-        row['snapshot_text'] = file
-        llm_resp = generate(
-            f"{llm_filter_pmt}{row['snapshot_text']}", json=True)
-        llm_resp = json.loads(llm_resp)
-        llm_resp = llm_resp.get('result', '')
-        if llm_resp:
-            row['summary'] = f'Title: {row["title"]}\n\nURL: {row["url"]}\n\nSummary:\n{llm_resp}'
-            llm_res.append(row)
-    except Exception as e:
-        # print(f"Error: {e}")
-        continue
-    if len(llm_res) >= MAX_RESULTS:
-        break
+    # Print merged results
+    # print("Merged Results:")
+    # print(f"{'ID':<10}{'Distance':<15}{'Score':<15}{'Title'}")
+    # print("-" * 50)
+    # for row in m_res:
+    #     print(f"{row['id']:<10}{row['distance']:<15.6f}{row['score']:<15.6f}{row['title']}")
 
-# Print summary results
-print(f'\n\n\nTopic: {topic}')
-print("> Summary results:")
-for row in llm_res:
-    print(row['summary'], end='\n-------------------------------------------\n')
-# print('\n\nImage results:')
-# for row in is_res:
-#     print(f"{row['id']:<10}    {row['distance']:<15.6f}{row['similarity']:<15.6f}{row['title']:<50}    {row['url']:<50}")
+    # Merge chunks
+    print("> Merge chunks...")
+    merged_results = {}
+    for row in m_res:
+        group_key = (row['source_id'], row['source_db'])
+        if group_key not in merged_results:
+            merged_results[group_key] = {**row, 'chunks': []}
+        merged_results[group_key]['distance'] = min(
+            merged_results[group_key]['distance'] if merged_results[group_key]['distance'] is not None else MAX_DISTANCE,
+            row['distance'] if row['distance'] is not None else MAX_DISTANCE
+        )
+        merged_results[group_key]['similarity'] = max(
+            merged_results[group_key]['similarity'] if merged_results[group_key]['similarity'] is not None else 0,
+            row['similarity'] if row['similarity'] is not None else 0
+        )
+        merged_results[group_key]['score'] = max(
+            merged_results[group_key]['score'] if merged_results[group_key]['score'] is not None else 0,
+            row['score'] if row['score'] is not None else 0
+        )
+        merged_results[group_key]['chunks'].append({
+            'chunk_index': row['chunk_index'],
+            'chunk_text': row['chunk_text']
+        })
+        merged_results[group_key]['chunks'].sort(
+            key=lambda x: x['chunk_index'])
+        merged_results[group_key].pop('chunk_index', None)
+        merged_results[group_key].pop('chunk_text', None)
+    m_res = sorted(merged_results.values(
+    ), key=lambda x: x['distance'] if x['distance'] is not None else MAX_DISTANCE)
+
+    # Print merged results
+    # print("Merged Results:")
+    # print(f"{'ID':<10}{'Distance':<15}{'Score':<15}{'Title'}")
+    # print("-" * 50)
+    # for row in m_res:
+    #     print(f"{row['id']:<10}{row['distance']:<15.6f}{row['score']:<15.6f}{row['title']}")
+
+    # Fusion results
+
+    def fusion_sort_key(result):
+        distance = result['distance'] if result['distance'] is not None else MAX_DISTANCE
+        score = result['score'] if result['score'] is not None else 0
+        normalized_score = score / MAX_SCORE
+        normalized_distance = 1 - (distance / MAX_DISTANCE)
+        vector_weight = 0.55
+        bm25_weight = 0.45
+        fusion_score = vector_weight * normalized_distance + bm25_weight * normalized_score
+        return fusion_score
+
+    m_res = sorted(m_res, key=fusion_sort_key, reverse=True)
+    m_res = m_res[:100]
+
+    # Print fusion results
+    print("Fusion Results:")
+    print(f"{'ID':<10}    {'Distance':<15}    {'Score':<15}    {'Title':<50}    {'URL':<50}    {'Chunk Index':<15}    {'Chunk Text':<90}")
+    print("-" * 200)
+    for row in m_res:
+        distance = f"{row['distance']:.4f}" if isinstance(
+            row['distance'], (int, float)) else "N/A"
+        score = f"{row['score']:.4f}" if isinstance(
+            row['score'], (int, float)) else "N/A"
+        url = row.get('url', 'N/A')
+        if len(row['title']) >= 50:
+            title = f"{row['title'][:47]}..."
+        else:
+            title = row['title']
+        if len(url) >= 50:
+            url = f"{url[:47]}..."
+        for index, chunk in enumerate(row['chunks']):
+            chunk_text = chunk['chunk_text'].replace('\n', ' ')
+            if len(chunk_text) >= 80:
+                start = (len(chunk_text) - 80) // 2
+                chunk_text = f"...{chunk_text[start:start + 80 - 6]}..."
+            if index == 0:
+                print(
+                    f"{row['id']:<10}    {distance:<15}    {score:<15}    {title:<50}    {url:<50}    {chunk['chunk_index']:<15}    {chunk_text:<80}")
+            else:
+                print(
+                    f"{'':<10}    {'':<15}    {'':<15}    {'':<50}    {'':<50}    {chunk['chunk_index']:<15}    {chunk_text:<80}")
+
+    # Using LLM to verify the results
+    print("> Using LLM to verify the results...")
+    llm_filter_pmt = f"""You are an intelligent AI document retrieval expert, and you have been asked a question: "{topic}".\n\nBelow is a document retrieval result that may relate to this question. Please read this document. Based on your judgment, if you find any information within the text that aids in answering the question, Extract and organize the useful information. If not, return an empty string. For matching documents, be sure to extract the corresponding content from the original text, rather than merely returning a summary. When organizing information, please ensure the original format and context flow smoothly, making the content relatively complete and readable. If it is in Markdown format, retain the Markdown hyperlinks and image references. If it is other formatted text like XML or HTML, please convert it to Markdown format. Please delete and output any other invalid formats and citation marks. For content you consider useless or of little use, please output an empty string. Please output in JSON format {{"result": "SUMMARY"}} or {{"result": ""}}. Here are the text excerpts you need to process:\n\n"""
+    task_hash = sha256(topic)
+    temp_path = tempfile.TemporaryDirectory(suffix=f'-{task_hash}')
+    llm_res = []
+    MAX_RESULTS = 10
+    for i, row in enumerate(m_res):
+        try:
+            file_name = os.path.join(temp_path.name, f"{row['id']}.json")
+            download_file(row['snapshot'], file_name)
+            file = read_json(file_name)
+            file = file['text']
+            row['snapshot_text'] = file
+            llm_resp = generate(
+                f"{llm_filter_pmt}{row['snapshot_text']}", json=True)
+            llm_resp = json.loads(llm_resp)
+            llm_resp = llm_resp.get('result', '')
+            if llm_resp:
+                row['summary'] = f'Title: {row["title"]}\n\nURL: {row["url"]}\n\nSummary:\n{llm_resp}'
+                llm_res.append(row)
+        except Exception as e:
+            # print(f"Error: {e}")
+            continue
+        if len(llm_res) >= MAX_RESULTS:
+            break
+
+    # Print summary results
+    print(f'\n\n\nTopic: {topic}')
+    print("> Summary results:")
+    for row in llm_res:
+        print(row['summary'],
+              end='\n-------------------------------------------\n')
+    # print('\n\nImage results:')
+    # for row in is_res:
+    #     print(f"{row['id']:<10}    {row['distance']:<15.6f}{row['similarity']:<15.6f}{row['title']:<50}    {row['url']:<50}")
