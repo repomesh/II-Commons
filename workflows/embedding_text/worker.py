@@ -78,19 +78,10 @@ class EmbeddingWorkflow:
                 download_file(s3_address, filename)
                 log(f'Downloaded {s3_address} to: {filename}')
                 json = read_json(filename)
-                if len(json['title']) == 0 or len(json['text']) == 0:
+                if len(json['text']) == 0:
                     continue
-                text = f"---\nTitle: {json['title']}" \
-                    + f"\nUrl: {json['url']}"
-                if (json.get('contributor')
-                    and json['contributor'].get('username')
-                        and len(json['contributor']['username']) > 0):
-                    text += f"\nContributor: {json['contributor']['username']}"
-                if (len(json['timestamp']) > 0):
-                    text += f"\nTimestamp: {json['timestamp']}"
-                text += f"\n---\n\n{json['text']}"
                 texts.append({
-                    'id': meta['id'], 'text': text, 'meta': json,
+                    'id': meta['id'], 'text': json['text'], 'meta': json,
                     'origin_storage_id': meta['origin_storage_id'],
                 })
             except Exception as e:
@@ -103,8 +94,6 @@ class EmbeddingWorkflow:
                 log('Embedding Documents...')
                 snapshot = json_dumps(txt['id'])
                 chunks, _, embeddings = chunking(txt['text'])
-                print(chunks, embeddings, len(chunks),
-                      len(embeddings), len(embeddings[0]))
             except Exception as e:
                 log(f'❌ ({snapshot}) Error embedding: {e}')
             if chunks is not None and embeddings is not None:

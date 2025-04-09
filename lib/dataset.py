@@ -219,6 +219,10 @@ RULES = {
         'fields': {},
         's3_path': S3_PATH,
     },
+    'text_0000002_en': {
+        'fields': {},
+        's3_path': S3_PATH,
+    },
     'arxiv': {
         'fields': map_meta_arxiv,
         's3_path': S3_PATH,

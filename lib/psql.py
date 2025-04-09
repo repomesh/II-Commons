@@ -87,7 +87,7 @@ def get_table_name(dataset):
     match dataset:
         case 'alpha':
             head = 'ii'
-        case 'text_0000001_en' | 'wikipedia_en' | 'arxiv' | 'ms_marco':
+        case 'text_0000001_en' | 'text_0000002_en' | 'wikipedia_en' | 'arxiv' | 'ms_marco':
             head = 'ts'
     table_name = f'{head}_{dataset}' + (f'_{tail}' if tail else '')
     # todo: disabled for now by @Leask for speed up
@@ -122,28 +122,35 @@ def init(dataset):
                     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )""",
             ]
-            for tb in ['text_0000001_en', 'text_0000002_en']:
-                list_sql.extend([
-                    f"""CREATE TABLE IF NOT EXISTS {tb} (
-                        id BIGSERIAL PRIMARY KEY,
-                        title VARCHAR NOT NULL,
-                        url VARCHAR NOT NULL,
-                        snapshot VARCHAR NOT NULL,
-                        chunk_index BIGINT NOT NULL,
-                        chunk_text VARCHAR NOT NULL,
-                        source_db VARCHAR NOT NULL,
-                        source_id BIGINT NOT NULL,
-                        vector VECTOR(1536) DEFAULT NULL,
-                        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-                    )""",
-                    f'CREATE INDEX IF NOT EXISTS {tb}_source_db_index ON {tb} (source_db)',
-                    f'CREATE INDEX IF NOT EXISTS {tb}_source_id_index ON {tb} (source_id)',
-                    f'CREATE INDEX IF NOT EXISTS {tb}_chunk_index_index ON {tb} (chunk_index)',
-                    f'CREATE UNIQUE INDEX IF NOT EXISTS {tb}_source_index ON {tb} (source_db, source_id, chunk_index)',
-                    f'CREATE INDEX IF NOT EXISTS {tb}_vector_index ON {tb} USING hnsw(vector vector_cosine_ops)',
-                    f"CREATE INDEX IF NOT EXISTS {tb}_chunk_text ON {tb} USING bm25 (id, title, chunk_text) WITH (key_field='id')",
-                ])
+            init('text_0000001_en')
+            init('text_0000002_en')
+        case 'text_0000001_en' | 'text_0000002_en':
+            match dataset:
+                case 'text_0000001_en':
+                    vector_dim = 1536
+                case 'text_0000002_en':
+                    vector_dim = 1024
+            list_sql.extend([
+                f"""CREATE TABLE IF NOT EXISTS {table_name} (
+                    id BIGSERIAL PRIMARY KEY,
+                    title VARCHAR NOT NULL,
+                    url VARCHAR NOT NULL,
+                    snapshot VARCHAR NOT NULL,
+                    chunk_index BIGINT NOT NULL,
+                    chunk_text VARCHAR NOT NULL,
+                    source_db VARCHAR NOT NULL,
+                    source_id BIGINT NOT NULL,
+                    vector VECTOR({vector_dim}) DEFAULT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )""",
+                f'CREATE INDEX IF NOT EXISTS {table_name}_source_db_index ON {table_name} (source_db)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_source_id_index ON {table_name} (source_id)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_chunk_index_index ON {table_name} (chunk_index)',
+                f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_source_index ON {table_name} (source_db, source_id, chunk_index)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING hnsw(vector vector_cosine_ops)',
+                f"CREATE INDEX IF NOT EXISTS {table_name}_chunk_text ON {table_name} USING bm25 (id, title, chunk_text) WITH (key_field='id')",
+            ])
         case 'ms_marco':
             list_sql = [
                 f"""CREATE TABLE IF NOT EXISTS {table_name} (
