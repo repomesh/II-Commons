@@ -2,7 +2,7 @@ from lib.dataset import init
 from lib.hatchet import SCHEDULE_TIMEOUT, STEP_RETRIES, STEP_TIMEOUT, concurrency, hatchet, logs
 from lib.psql import batch_insert
 from lib.s3 import download_file
-from lib.late import process
+from lib.text import process
 from lib.utilitas import json_dumps, sha256, read_json
 import os
 import tempfile
@@ -89,29 +89,30 @@ class EmbeddingWorkflow:
                 continue
         meta_items = []
         for i, txt in enumerate(texts):
-            chunks, embeddings = None, None
             try:
                 log('Embedding Documents...')
                 snapshot = json_dumps(txt['id'])
-                chunks, _, embeddings = process(txt['text'])
+                end_res = process(txt['text'])
             except Exception as e:
                 log(f'❌ ({snapshot}) Error embedding: {e}')
-            if chunks is not None and embeddings is not None:
+                continue
+            if end_res is not None:
                 if context.done():
                     log(f"❌ Job canceled: {args['dataset']}.")
                     return {'dataset': args['dataset'], 'meta_items': []}
                 snapshot = txt['meta']['url']
                 items = []
-                for j in range(len(chunks)):
+                for j in range(len(end_res)):
+                    chk = end_res[j]
                     items.append({
                         'title': txt['meta']['title'],
                         'url': txt['meta']['url'],
                         'snapshot': txt['origin_storage_id'],
                         'chunk_index': j,
-                        'chunk_text': chunks[j],
+                        'chunk_text': chk['chunk'],
                         'source_db': args['dataset'],
                         'source_id': txt['id'],
-                        'vector': embeddings[j],
+                        'vector': chk['embedding'],
                     })
                 try:
                     insert_records_batch(ds, items)

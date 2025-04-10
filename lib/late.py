@@ -120,6 +120,10 @@ def process(text):
         chunks.extend(_chunks)
         span_annotations.extend(_span_annotations)
         embeddings.extend(_embeddings)
+    if len(chunks) != len(span_annotations) != len(embeddings):
+        raise ValueError(
+            'chunks, span_annotations, embeddings have different lengths'
+        )
     return chunks, span_annotations, embeddings
 
 
@@ -148,7 +152,6 @@ __all__ = [
 
 
 if __name__ == '__main__':
-    # chunks, span_annotations, embeddings = process("""Berlin (/bɜːrˈlɪn/ bur-LIN; German: [bɛʁˈliːn] ⓘ)[10] is the capital and largest city of Germany, by both area and population.[11] With 3.7 million inhabitants,[5] it has the highest population within its city limits of any city in the European Union. The city is also one of the states of Germany, being the third smallest state in the country by area. Berlin is surrounded by the state of Brandenburg, and Brandenburg's capital Potsdam is nearby. The urban area of Berlin has a population of over 4.6 million and is therefore the most populous urban area in Germany.[6][12] The Berlin-Brandenburg capital region has around 6.2 million inhabitants and is Germany's second-largest metropolitan region after the Rhine-Ruhr region,[5] as well as the fifth-biggest metropolitan region by GDP in the European Union.[13]""")
     init()
     input_text = """Berlin (/bɜːrˈlɪn/ bur-LIN; German: [bɛʁˈliːn] ⓘ)[10] is the capital and largest city of Germany, by both area and population.[11] With 3.7 million inhabitants,[5] it has the highest population within its city limits of any city in the European Union. The city is also one of the states of Germany, being the third smallest state in the country by area. Berlin is surrounded by the state of Brandenburg, and Brandenburg's capital Potsdam is nearby. The urban area of Berlin has a population of over 4.6 million and is therefore the most populous urban area in Germany.[6][12] The Berlin-Brandenburg capital region has around 6.2 million inhabitants and is Germany's second-largest metropolitan region after the Rhine-Ruhr region,[5] as well as the fifth-biggest metropolitan region by GDP in the European Union.[13]"""
     chunks, span_annotations, embeddings = process(input_text)
