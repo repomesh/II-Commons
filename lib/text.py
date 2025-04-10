@@ -1,8 +1,9 @@
-from sentence_transformers import SentenceTransformer
+from llama_cpp import Llama
 import nltk
 import re
 
-MODEL = 'Alibaba-NLP/gte-Qwen2-7B-instruct'
+# from sentence_transformers import SentenceTransformer
+# MODEL = 'Alibaba-NLP/gte-Qwen2-7B-instruct'
 model, nltkReady = None, False
 
 
@@ -11,8 +12,12 @@ def init():
     nltk.download('punkt_tab')
     nltkReady = True
     global model
-    model = SentenceTransformer(MODEL, trust_remote_code=True)
-    model.max_seq_length = 8192
+    # model = SentenceTransformer(MODEL, trust_remote_code=True)
+    # model.max_seq_length = 8192
+    model = Llama(
+        model_path="models/gte-qwen2-7b-instruct-q8_0.gguf",
+        embedding=True, n_gpu_layers=-1, verbose=False
+    )
 
 
 def chunk(document, size=2048, overlap=1, join=True):
@@ -45,7 +50,8 @@ def encode(chunks):
     global model
     if not model:
         init()
-    return model.encode(chunks).tolist()
+    # return model.encode(chunks).tolist()
+    return [x['embedding'][0] for x in model.create_embedding(chunks)['data']]
 
 
 def process(document, size=2048, overlap=1):
