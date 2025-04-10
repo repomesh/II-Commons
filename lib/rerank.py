@@ -24,7 +24,6 @@ def init():
             MODEL_NAME,
             torch_dtype="auto",
             trust_remote_code=True,
-            use_fast=True,
             attn_implementation="flash_attention_2"
         )
         model.to(device)
