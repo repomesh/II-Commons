@@ -125,7 +125,12 @@ def init(dataset):
             init('text_0000001_en')
             init('text_0000002_en')
         case 'text_0000001_en' | 'text_0000002_en':
-            vector_dim = 3584
+            match dataset:
+                case 'text_0000001_en':
+                    vector_dim = 1536
+                case 'text_0000002_en':
+                    vector_dim = 3584
+            type = 'halfvec' if vector_dim > 2000 else 'vector'
             list_sql.extend([
                 f"""CREATE TABLE IF NOT EXISTS {table_name} (
                     id BIGSERIAL PRIMARY KEY,
@@ -136,7 +141,7 @@ def init(dataset):
                     chunk_text VARCHAR NOT NULL,
                     source_db VARCHAR NOT NULL,
                     source_id BIGINT NOT NULL,
-                    vector VECTOR({vector_dim}) DEFAULT NULL,
+                    vector {type}({vector_dim}) DEFAULT NULL,
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )""",
@@ -144,7 +149,7 @@ def init(dataset):
                 f'CREATE INDEX IF NOT EXISTS {table_name}_source_id_index ON {table_name} (source_id)',
                 f'CREATE INDEX IF NOT EXISTS {table_name}_chunk_index_index ON {table_name} (chunk_index)',
                 f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_source_index ON {table_name} (source_db, source_id, chunk_index)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING hnsw(vector vector_cosine_ops)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING hnsw(vector {type}_cosine_ops)',
                 f"CREATE INDEX IF NOT EXISTS {table_name}_chunk_text ON {table_name} USING bm25 (id, title, chunk_text) WITH (key_field='id')",
             ])
         case 'ms_marco':
