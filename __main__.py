@@ -5,12 +5,14 @@ import argparse
 import logging
 import sys
 import atexit
+import nltk
 from typing import Optional
 from lib.config import GlobalConfig
 from workflows.fetch import run_host as run_dataset_fetch_host, run_worker as run_dataset_fetch_worker
 from workflows.embedding_text import run_host as run_embedding_text_host, run_worker as run_embedding_text_worker
 from workflows.embedding_image import run_host as run_embedding_image_host, run_worker as run_embedding_image_worker
 from workflows.caption import run_host as run_caption_host, run_worker as run_caption_worker
+from bin.fusion import query as query
 from bin.fusion_lite import query as query_lite
 from bin.analyze import run as run_analyze
 
@@ -100,6 +102,13 @@ Demo:
     )
 
     parser.add_argument(
+        '-q', '--query',
+        help='query: topic',
+        type=str,
+        required=False
+    )
+
+    parser.add_argument(
         '-lq', '--lite-query',
         help='lite query: topic',
         type=str,
@@ -182,6 +191,9 @@ def main() -> Optional[int]:
         elif args.analyze:
             logger.info(f"Run analyze...")
             run_analyze()
+        elif args.query:
+            logger.info(f"Run query: {args.query}...")
+            query(args.query)
         elif args.lite_query:
             logger.info(f"Run lite query: {args.lite_query}...")
             query_lite(args.lite_query)

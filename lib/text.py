@@ -8,24 +8,27 @@ model, nltkReady = None, False
 
 
 def init():
-    global nltkReady
-    nltk.download('punkt_tab')
-    nltkReady = True
-    global model
-    # model = SentenceTransformer(MODEL, trust_remote_code=True)
-    # model.max_seq_length = 8192
-    model = Llama(
-        model_path="models/gte-qwen2-7b-instruct-q8_0.gguf",
-        embedding=True, n_gpu_layers=-1, verbose=False
-    )
+    global nltkReady, model
+    if not nltkReady:
+        nltk.download('punkt_tab')
+        nltkReady = True
+    if not model:
+        # model = SentenceTransformer(MODEL, trust_remote_code=True)
+        # model.max_seq_length = 8192
+        model = Llama(
+            model_path="models/gte-qwen2-7b-instruct-q8_0.gguf",
+            embedding=True, n_gpu_layers=-1, verbose=False
+        )
+
+
+def chunk_by_sentence(document):
+    init()
+    return nltk.sent_tokenize(document)
 
 
 def chunk(document, size=2048, overlap=1, join=True):
-    global nltkReady
-    if not nltkReady:
-        init()
     chunks, maxLen = [], int(size / 3)
-    sentences = nltk.sent_tokenize(document)
+    sentences = chunk_by_sentence(document)
     for i in range(len(sentences)):
         subs = []
         if len(sentences[i]) > maxLen:
@@ -47,9 +50,7 @@ def chunk(document, size=2048, overlap=1, join=True):
 
 
 def encode(chunks):
-    global model
-    if not model:
-        init()
+    init()
     # return model.encode(chunks).tolist()
     return [x['embedding'][0] for x in model.create_embedding(chunks)['data']]
 
@@ -70,4 +71,6 @@ def process(document, size=2048, overlap=1):
 __all__ = [
     'init',
     'chunk',
+    'chunk_by_sentence',
+    'process',
 ]
