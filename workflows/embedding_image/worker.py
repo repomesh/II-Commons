@@ -1,6 +1,6 @@
 from lib.dataset import init
 from lib.embedding import encode_image
-from lib.hatchet import SCHEDULE_TIMEOUT, STEP_RETRIES, STEP_TIMEOUT, concurrency, hatchet, logs, set_signal_handler
+from lib.hatchet import SCHEDULE_TIMEOUT, STEP_RETRIES, STEP_TIMEOUT, concurrency, hatchet, logs, set_signal_handler, WORKFLOW_LIMIT
 from lib.preprocess import process
 from lib.s3 import download_file, upload_file
 from lib.utilitas import json_dumps, sha256
@@ -11,8 +11,7 @@ import uuid
 
 WORKFLOW = 'Embedding_Image'
 WORKER = 'Embedding_Image'
-WORKFLOW_LIMIT = int(os.environ.get('WORKFLOW_LIMIT_EMBEDDING', '500'))
-WORKER_LIMIT = int(os.environ.get('WORKER_LIMIT_EMBEDDING', '10'))
+WORKER_LIMIT = int(os.environ.get('WORKER_LIMIT_EMBEDDING_IMAGE', '1'))
 
 
 @hatchet.workflow(

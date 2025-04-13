@@ -11,6 +11,7 @@ STEP_RETRIES = 3
 # https://docs.hatchet.run/home/features/concurrency/round-robin
 LIMIT_EXPRESSION = 'input.dataset'
 LIMIT_STRATEGY = ConcurrencyLimitStrategy.GROUP_ROUND_ROBIN
+WORKFLOW_LIMIT = int(os.environ.get('WORKFLOW_LIMIT', '1000'))
 
 
 def logs(ctx, msg, task_id=None):
@@ -58,6 +59,7 @@ __all__ = [
     'LIMIT_EXPRESSION',
     'LIMIT_STRATEGY',
     'SCHEDULE_TIMEOUT',
+    'WORKFLOW_LIMIT',
     'STEP_RETRIES',
     'STEP_TIMEOUT',
     'concurrency',

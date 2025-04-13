@@ -1,5 +1,5 @@
 from lib.dataset import init
-from lib.hatchet import SCHEDULE_TIMEOUT, STEP_RETRIES, STEP_TIMEOUT, concurrency, hatchet, logs, set_signal_handler
+from lib.hatchet import SCHEDULE_TIMEOUT, STEP_RETRIES, STEP_TIMEOUT, concurrency, hatchet, logs, set_signal_handler, WORKFLOW_LIMIT
 from lib.s3 import exists, get_address_by_key, upload_file
 from lib.gcs import download_file
 from lib.utilitas import download, json_dumps, sha256, get_file_type
@@ -10,8 +10,7 @@ import uuid
 
 WORKFLOW = 'Fetch'
 WORKER = 'Fetch'
-WORKFLOW_LIMIT = int(os.environ.get('WORKFLOW_LIMIT_DATASETFETCH', '500'))
-WORKER_LIMIT = int(os.environ.get('WORKER_LIMIT_DATASETFETCH', '30'))
+WORKER_LIMIT = int(os.environ.get('WORKER_LIMIT_FETCH', '30'))
 i = 0
 
 

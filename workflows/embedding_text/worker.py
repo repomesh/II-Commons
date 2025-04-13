@@ -1,5 +1,5 @@
 from lib.dataset import init
-from lib.hatchet import SCHEDULE_TIMEOUT, STEP_RETRIES, STEP_TIMEOUT, concurrency, hatchet, logs, set_signal_handler
+from lib.hatchet import SCHEDULE_TIMEOUT, STEP_RETRIES, STEP_TIMEOUT, concurrency, hatchet, logs, set_signal_handler, WORKFLOW_LIMIT
 from lib.psql import batch_insert
 from lib.s3 import download_file
 from lib.text import process
@@ -10,8 +10,7 @@ import uuid
 
 WORKFLOW = 'Embedding_Text'
 WORKER = 'Embedding_Text'
-WORKFLOW_LIMIT = int(os.environ.get('WORKFLOW_LIMIT_EMBEDDING', '500'))
-WORKER_LIMIT = int(os.environ.get('WORKER_LIMIT_EMBEDDING', '1'))
+WORKER_LIMIT = int(os.environ.get('WORKER_LIMIT_EMBEDDING_TEXT', '1'))
 
 
 def insert_records_batch(ds, items):

@@ -1,13 +1,12 @@
 from lib.caption import caption_image
 from lib.dataset import init
-from lib.hatchet import SCHEDULE_TIMEOUT, STEP_RETRIES, STEP_TIMEOUT, concurrency, hatchet, logs, set_signal_handler
+from lib.hatchet import SCHEDULE_TIMEOUT, STEP_RETRIES, STEP_TIMEOUT, concurrency, hatchet, logs, set_signal_handler, WORKFLOW_LIMIT
 from lib.s3 import get_url_by_key
 import os
 import uuid
 
 WORKFLOW = 'Caption'
 WORKER = 'Caption'
-WORKFLOW_LIMIT = int(os.environ.get('WORKFLOW_LIMIT_CAPTION', '30'))
 WORKER_LIMIT = int(os.environ.get('WORKER_LIMIT_CAPTION', '1'))
 
 
