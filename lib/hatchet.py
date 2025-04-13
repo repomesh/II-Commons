@@ -1,3 +1,5 @@
+import os
+import signal
 from hatchet_sdk import ConcurrencyExpression, ConcurrencyLimitStrategy, Hatchet
 from lib.config import GlobalConfig
 
@@ -38,6 +40,18 @@ def concurrency(max_runs):
     )
 
 
+def signal_handler(signum, frame):
+    pgid = os.getpgid(0)
+    os.killpg(pgid, signal.SIGKILL)
+    os._exit(0)
+
+
+def set_signal_handler():
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGQUIT, signal_handler)
+
+
 hatchet = Hatchet(debug=GlobalConfig.DEBUG)
 
 __all__ = [
@@ -53,4 +67,5 @@ __all__ = [
     'logs',
     'push_dataset_event',
     'push',
+    'set_signal_handler',
 ]

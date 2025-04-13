@@ -1,5 +1,5 @@
 from lib.dataset import init
-from lib.hatchet import SCHEDULE_TIMEOUT, STEP_RETRIES, STEP_TIMEOUT, concurrency, hatchet, logs
+from lib.hatchet import SCHEDULE_TIMEOUT, STEP_RETRIES, STEP_TIMEOUT, concurrency, hatchet, logs, set_signal_handler
 from lib.psql import batch_insert
 from lib.s3 import download_file
 from lib.text import process
@@ -135,6 +135,7 @@ class EmbeddingWorkflow:
 def run():
     worker = hatchet.worker(WORKER, max_runs=WORKER_LIMIT)
     worker.register_workflow(EmbeddingWorkflow())
+    set_signal_handler()
     worker.start()
 
 

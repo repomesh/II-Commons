@@ -1,5 +1,5 @@
 from lib.dataset import init
-from lib.hatchet import SCHEDULE_TIMEOUT, STEP_RETRIES, STEP_TIMEOUT, concurrency, hatchet, logs
+from lib.hatchet import SCHEDULE_TIMEOUT, STEP_RETRIES, STEP_TIMEOUT, concurrency, hatchet, logs, set_signal_handler
 from lib.s3 import exists, get_address_by_key, upload_file
 from lib.gcs import download_file
 from lib.utilitas import download, json_dumps, sha256, get_file_type
@@ -108,6 +108,7 @@ class DatasetFetchWorkflow:
 def run():
     worker = hatchet.worker(WORKER, max_runs=WORKER_LIMIT)
     worker.register_workflow(DatasetFetchWorkflow())
+    set_signal_handler()
     worker.start()
 
 

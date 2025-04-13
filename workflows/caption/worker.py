@@ -1,6 +1,6 @@
 from lib.caption import caption_image
 from lib.dataset import init
-from lib.hatchet import SCHEDULE_TIMEOUT, STEP_RETRIES, STEP_TIMEOUT, concurrency, hatchet, logs
+from lib.hatchet import SCHEDULE_TIMEOUT, STEP_RETRIES, STEP_TIMEOUT, concurrency, hatchet, logs, set_signal_handler
 from lib.s3 import get_url_by_key
 import os
 import uuid
@@ -63,6 +63,7 @@ class CaptionWorkflow:
 def run():
     worker = hatchet.worker(WORKER, max_runs=WORKER_LIMIT)
     worker.register_workflow(CaptionWorkflow())
+    set_signal_handler()
     worker.start()
 
 
