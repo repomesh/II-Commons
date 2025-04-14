@@ -6,6 +6,7 @@ from lib.text import process
 from lib.utilitas import json_dumps, sha256, read_json
 import os
 import tempfile
+import time
 import uuid
 
 WORKFLOW = 'Embedding_Text'
@@ -114,8 +115,10 @@ class EmbeddingWorkflow:
                         'vector': chk['embedding'],
                     })
                 try:
+                    db_insert_time = time.time()
                     insert_records_batch(ds, items)
-                    log(f'🔥 ({snapshot}) Updated meta.')
+                    db_insert_time = time.time() - db_insert_time
+                    log(f'🔥 ({snapshot}) Updated meta: {len(items)} items in {db_insert_time:.2f} seconds')
                     del txt['meta']
                     del txt['text']
                     meta_items.append(txt)
