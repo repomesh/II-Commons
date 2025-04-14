@@ -34,8 +34,6 @@ class DatasetFetchWorkflow:
         # https://docs.hatchet.run/home/features/timeouts
         # context.refresh_timeout("15s")
         args = context.workflow_input()
-        if args['dataset'] == 'megalith_10m':
-            return {}
         try:
             ds = init(args['dataset'])
         except Exception as e:
