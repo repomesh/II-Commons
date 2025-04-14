@@ -1,0 +1,6 @@
+python-dotenv
+uvicorn
+pydantic
+sentence_transformers
+xformers
+torchvision

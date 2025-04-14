@@ -1,0 +1,11 @@
+psycopg==3.2.3
+psycopg-binary==3.2.3
+psycopg-pool==3.2.4
+pgvector==0.3.6
+requests==2.32.3
+boto3==1.35.73
+google-genai
+openAI
+python-dotenv
+uvicorn
+pydantic
