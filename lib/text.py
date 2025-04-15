@@ -1,9 +1,9 @@
-from llama_cpp import Llama
+from sentence_transformers import SentenceTransformer
 import nltk
 import re
 
-# from sentence_transformers import SentenceTransformer
-# MODEL = 'Alibaba-NLP/gte-Qwen2-7B-instruct'
+# MODEL = 'Snowflake/snowflake-arctic-embed-l-v2.0'
+MODEL = 'Snowflake/snowflake-arctic-embed-m-v2.0'
 model, nltkReady = None, False
 
 
@@ -13,12 +13,7 @@ def init():
         nltk.download('punkt_tab')
         nltkReady = True
     if not model:
-        # model = SentenceTransformer(MODEL, trust_remote_code=True)
-        # model.max_seq_length = 8192
-        model = Llama(
-            model_path="models/gte-qwen2-7b-instruct-q8_0.gguf",
-            embedding=True, n_gpu_layers=-1, verbose=False
-        )
+        model = SentenceTransformer(MODEL, trust_remote_code=True)
 
 
 def chunk_by_sentence(document):
@@ -49,10 +44,14 @@ def chunk(document, size=2048, overlap=1, join=True):
     return [' '.join(chunk) for chunk in chunks] if join else chunks
 
 
-def encode(chunks):
+def encode(chunks, query=False):
     init()
-    # return model.encode(chunks).tolist()
-    return [x['embedding'][0] for x in model.create_embedding(chunks)['data']]
+    resp = None
+    if query:
+        resp = model.encode(chunks, prompt_name='query')
+    else:
+        resp = model.encode(chunks)
+    return resp.tolist()
 
 
 def process(document, size=2048, overlap=1):
@@ -68,6 +67,9 @@ def process(document, size=2048, overlap=1):
         return None
 
 
+if __name__ == '__main__':
+    resp = process('Hello, world!')
+    print(resp)
 __all__ = [
     'init',
     'chunk',

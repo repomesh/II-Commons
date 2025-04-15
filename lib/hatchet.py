@@ -1,6 +1,7 @@
 import os
 import signal
-from hatchet_sdk import ConcurrencyExpression, ConcurrencyLimitStrategy, Hatchet
+from hatchet_sdk import ConcurrencyExpression, ConcurrencyLimitStrategy, Hatchet, Context
+from pydantic import BaseModel
 from lib.config import GlobalConfig
 
 # https://docs.hatchet.run/home/features/timeouts
@@ -33,6 +34,9 @@ def push_dataset_event(type, dataset, meta_items):
             print(f'Event `{event}` submitted with {count} items.')
         return push(event, {'dataset': dataset, 'meta_items': meta_items})
 
+class WorkflowInput(BaseModel):
+    dataset: str
+    meta_items: list[dict]
 
 def concurrency(max_runs):
     return ConcurrencyExpression(
@@ -63,7 +67,9 @@ __all__ = [
     'STEP_RETRIES',
     'STEP_TIMEOUT',
     'concurrency',
+    'Context',
     'ConcurrencyExpression',
+    'WorkflowInput',
     'ConcurrencyLimitStrategy',
     'hatchet',
     'logs',

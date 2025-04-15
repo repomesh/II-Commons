@@ -63,6 +63,14 @@ def ensure_vector_extension():
     return res
 
 
+def ensure_vectors_extension():
+    sql = 'CREATE EXTENSION IF NOT EXISTS vectors'
+    res = execute(sql)
+    if GlobalConfig.DEBUG:
+        print(f'Init: {sql} => {res.statusmessage}')
+    return res
+
+
 def ensure_bm25_extension():
     sql = 'CREATE EXTENSION IF NOT EXISTS pg_search'
     res = execute(sql)
@@ -125,12 +133,8 @@ def init(dataset):
             init('text_0000001_en')
             init('text_0000002_en')
         case 'text_0000001_en' | 'text_0000002_en':
-            match dataset:
-                case 'text_0000001_en':
-                    vector_dim = 1536
-                case 'text_0000002_en':
-                    vector_dim = 3584
-            type = 'halfvec' if vector_dim > 2000 else 'vector'
+            vector_dim = 768
+            type = 'vecf16'
             list_sql.extend([
                 f"""CREATE TABLE IF NOT EXISTS {table_name} (
                     id BIGSERIAL PRIMARY KEY,
@@ -150,7 +154,7 @@ def init(dataset):
                 f'CREATE INDEX IF NOT EXISTS {table_name}_chunk_index_index ON {table_name} (chunk_index)',
                 f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_source_index ON {table_name} (source_db, source_id, chunk_index)',
                 # @todo:Disabled for Large Data Insertion
-                # f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING hnsw(vector {type}_cosine_ops)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING vectors(vector vecf16_l2_ops)',
                 f"CREATE INDEX IF NOT EXISTS {table_name}_chunk_text ON {table_name} USING bm25 (id, title, chunk_text) WITH (key_field='id')",
             ])
         case 'ms_marco':
@@ -499,6 +503,7 @@ def get_dataset(dataset):
 
 
 ensure_vector_extension()
+ensure_vectors_extension()
 ensure_bm25_extension()
 
 __all__ = [
