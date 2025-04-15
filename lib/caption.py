@@ -2,8 +2,7 @@ from lib.preprocess import process
 from lib.s3 import download_file, get_url_by_key
 from lib.utilitas import Image, json_dumps, sha256
 from torch.utils.data import Dataset, DataLoader
-from vllm import LLM, SamplingParams
-from vllm import SamplingParams
+# from vllm import LLM, SamplingParams
 import os
 import re
 import tempfile
@@ -16,9 +15,9 @@ from lib.api import CaptionAPI
 BATCH_SIZE = 8  # 64
 MAX_SIZE = 512
 MODEL_NAME = os.getenv('CAPTION_MODEL') or 'Qwen/Qwen2.5-VL-7B-Instruct'
-SAMPLING_PARAMS = SamplingParams(
-    temperature=0.1, max_tokens=512, stop_token_ids=None
-)
+# SAMPLING_PARAMS = SamplingParams(
+#     temperature=0.1, max_tokens=512, stop_token_ids=None
+# )
 
 model = None
 prompts = None
