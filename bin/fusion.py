@@ -53,9 +53,9 @@ def query(topic):
         formatted_vector = '[' + ','.join(map(str, e)) + ']'
         e_res.append(ds.query(
             f"""SELECT id, title, url, snapshot, source_db, source_id, chunk_index, chunk_text,
-            (vector <=> %s::vecf16) as distance,
-            ((2 - (vector <=> %s::vecf16)) / 2) as similarity
-            FROM {ds.get_table_name()} ORDER BY (vector <=> %s::vecf16) ASC OFFSET %s LIMIT %s""",
+            (vector <=> %s) as distance,
+            ((2 - (vector <=> %s)) / 2) as similarity
+            FROM {ds.get_table_name()} ORDER BY (vector <=> %s) ASC OFFSET %s LIMIT %s""",
             (formatted_vector, formatted_vector, formatted_vector, 0, SUB_QUERY_COUNT)
         ))
 
