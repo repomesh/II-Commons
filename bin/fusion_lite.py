@@ -22,7 +22,7 @@ def query(topic):
     tp_resp = {"sentences": [topic], "keywords": [topic]}
     # Embedding phrases
     print("> Embedding phrases...")
-    eb_resp = encode_text(tp_resp["sentences"])
+    eb_resp = encode_text(tp_resp["sentences"], query=True)
 
     # Embedding phrases search
     print("> Embedding vector search...")
