@@ -169,8 +169,9 @@ def init(dataset):
                     query_id TEXT,
                     query_type TEXT,
                     well_formed_answers TEXT[],  -- Array of well formed answers
-                    vector VECTOR(3584)
+                    vector halfvec(768)
                 )""",
+                f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING vchordrq (vector halfvec_cosine_ops)',
                 f"CREATE INDEX IF NOT EXISTS {table_name}_passage_text_index ON {table_name} USING bm25(id, passage_text) WITH(key_field='id')",
             ]
         case 'arxiv':
