@@ -1,11 +1,14 @@
 # git+https://github.com/huggingface/transformers.git
-hatchet_sdk
+transformers
 accelerate
 boto3
 bs4
+flash-attn
 google-cloud-storage
 google-genai
+hatchet_sdk
 imageio_ffmpeg
+nltk
 openAI
 opencv-python
 pandas
@@ -20,6 +23,6 @@ pysrt
 requests
 scenedetect
 scipy
-transformers
+sentence_transformers
 # vllm
 yt-dlp

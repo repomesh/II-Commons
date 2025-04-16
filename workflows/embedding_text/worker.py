@@ -8,7 +8,6 @@ import os
 import tempfile
 import time
 import uuid
-import numpy as np
 
 WORKFLOW = 'Embedding_Text'
 WORKER = 'Embedding_Text'
@@ -20,7 +19,7 @@ def insert_records_batch(ds, items):
     insert_query = f"""
     INSERT INTO {ds.get_table_name()}
     (title, url, snapshot, chunk_index, chunk_text, source_db, source_id, vector)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s::vecf16)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
     ON CONFLICT (source_db, source_id, chunk_index) DO NOTHING
     """
     records = []
@@ -35,7 +34,7 @@ def insert_records_batch(ds, items):
             record['chunk_text'],
             record['source_db'],
             record['source_id'],
-            '[' + ','.join(map(str, record['vector'])) + ']',
+            record['vector'],
         ))
     try:
         batch_insert(insert_query, records)

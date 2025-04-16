@@ -2,7 +2,7 @@ from lib.config import GlobalConfig
 from lib.embedding import DIMENSION
 from lib.utilitas import Empty
 from lib.s3 import get_url_by_key
-from pgvector.psycopg import register_vector
+# from pgvector.psycopg import register_vector
 from psycopg_pool import ConnectionPool
 from psycopg.types.json import Jsonb
 from psycopg.errors import UniqueViolation
@@ -24,7 +24,9 @@ EMPTY_OBJECT = '{}'
 
 
 def configure(conn):
-    register_vector(conn)
+    pass
+
+    # register_vector(conn)
 
 
 pool = ConnectionPool(
@@ -56,18 +58,15 @@ def execute(sql, values=None, log=False, autocommit=True, batch=False):
 
 
 def ensure_vector_extension():
-    sql = 'CREATE EXTENSION IF NOT EXISTS vector'
-    res = execute(sql)
-    if GlobalConfig.DEBUG:
-        print(f'Init: {sql} => {res.statusmessage}')
-    return res
-
-
-def ensure_vectors_extension():
-    sql = 'CREATE EXTENSION IF NOT EXISTS vectors'
-    res = execute(sql)
-    if GlobalConfig.DEBUG:
-        print(f'Init: {sql} => {res.statusmessage}')
+    # https://docs.vectorchord.ai/vectorchord/getting-started/overview.html
+    sqls = [
+        'CREATE EXTENSION IF NOT EXISTS vchord CASCADE',
+        # 'SET vectors.hnsw_ef_search = 100'
+    ]
+    for sql in sqls:
+        res = execute(sql)
+        if GlobalConfig.DEBUG:
+            print(f'Init: {sql} => {res.statusmessage}')
     return res
 
 
@@ -134,7 +133,7 @@ def init(dataset):
             init('text_0000002_en')
         case 'text_0000001_en' | 'text_0000002_en':
             vector_dim = 768
-            type = 'vecf16'
+            type = 'halfvec'
             list_sql.extend([
                 f"""CREATE TABLE IF NOT EXISTS {table_name} (
                     id BIGSERIAL PRIMARY KEY,
@@ -153,8 +152,7 @@ def init(dataset):
                 f'CREATE INDEX IF NOT EXISTS {table_name}_source_id_index ON {table_name} (source_id)',
                 f'CREATE INDEX IF NOT EXISTS {table_name}_chunk_index_index ON {table_name} (chunk_index)',
                 f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_source_index ON {table_name} (source_db, source_id, chunk_index)',
-                # @todo:Disabled for Large Data Insertion
-                f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING vectors(vector vecf16_l2_ops)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING vchordrq (vector halfvec_cosine_ops)',
                 f"CREATE INDEX IF NOT EXISTS {table_name}_chunk_text ON {table_name} USING bm25 (id, title, chunk_text) WITH (key_field='id')",
             ])
         case 'ms_marco':
@@ -503,7 +501,6 @@ def get_dataset(dataset):
 
 
 ensure_vector_extension()
-ensure_vectors_extension()
 ensure_bm25_extension()
 
 __all__ = [
