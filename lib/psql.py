@@ -2,7 +2,7 @@ from lib.config import GlobalConfig
 from lib.embedding import DIMENSION
 from lib.utilitas import Empty
 from lib.s3 import get_url_by_key
-# from pgvector.psycopg import register_vector
+from pgvector.psycopg import register_vector
 from psycopg_pool import ConnectionPool
 from psycopg.types.json import Jsonb
 from psycopg.errors import UniqueViolation
@@ -24,9 +24,7 @@ EMPTY_OBJECT = '{}'
 
 
 def configure(conn):
-    pass
-
-    # register_vector(conn)
+    register_vector(conn)
 
 
 pool = ConnectionPool(
@@ -231,7 +229,7 @@ def init(dataset):
                     exif JSONB NOT NULL DEFAULT '{EMPTY_OBJECT}',
                     meta JSONB NOT NULL DEFAULT '{EMPTY_OBJECT}',
                     source JSONB NOT NULL DEFAULT '[]',
-                    vector VECTOR(1152) DEFAULT NULL,
+                    vector halfvec(1152) DEFAULT NULL,
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )""",
@@ -248,7 +246,7 @@ def init(dataset):
                 f'CREATE INDEX IF NOT EXISTS {table_name}_source_index ON {table_name} USING gin(source)',
                 f'CREATE INDEX IF NOT EXISTS {table_name}_created_at_index ON {table_name} (created_at)',
                 f'CREATE INDEX IF NOT EXISTS {table_name}_updated_at_index ON {table_name} (updated_at)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING hnsw(vector vector_cosine_ops)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING vchordrq (vector halfvec_cosine_ops)',
                 f"CREATE INDEX IF NOT EXISTS {table_name}_caption_index ON {table_name} (caption) WHERE caption = ''",
                 f"CREATE INDEX IF NOT EXISTS {table_name}_caption_long_index ON {table_name} (caption_long) WHERE caption_long = ''",
                 f'CREATE INDEX IF NOT EXISTS {table_name}_vector_null_index ON {table_name} (vector) WHERE vector IS NULL',

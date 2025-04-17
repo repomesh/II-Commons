@@ -24,8 +24,6 @@ def insert_records_batch(ds, items):
     """
     records = []
     for record in items:
-        # Convert vector to fp16 and format for PostgreSQL
-
         records.append((
             record['title'],
             record['url'],
