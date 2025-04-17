@@ -11,7 +11,10 @@ import uuid
 
 WORKFLOW = 'Embedding_Image'
 WORKER = 'Embedding_Image'
-SLOTS = int(os.environ.get('WORKER_SLOTS_EMBEDDING_IMAGE', '1'))
+# mac studio m2 ultra 64G
+# SLOTS = int(os.environ.get('WORKER_SLOTS_EMBEDDING_IMAGE', '6'))
+# mac book pro m2 max 96G
+SLOTS = int(os.environ.get('WORKER_SLOTS_EMBEDDING_IMAGE', '30'))
 
 
 EmbeddingWorkflow = hatchet.workflow(

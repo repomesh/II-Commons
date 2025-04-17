@@ -2,6 +2,7 @@ from sentence_transformers import SentenceTransformer
 import nltk
 import re
 
+# https://huggingface.co/Snowflake/snowflake-arctic-embed-m-v2.0
 # MODEL = 'Snowflake/snowflake-arctic-embed-l-v2.0'
 MODEL = 'Snowflake/snowflake-arctic-embed-m-v2.0'
 model, nltkReady = None, False
