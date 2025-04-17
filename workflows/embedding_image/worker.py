@@ -20,6 +20,8 @@ EmbeddingWorkflow = hatchet.workflow(
     concurrency=concurrency(WORKFLOW_LIMIT),
     input_validator=WorkflowInput
 )
+
+
 @EmbeddingWorkflow.task(
     schedule_timeout=SCHEDULE_TIMEOUT,
     execution_timeout=STEP_TIMEOUT,
@@ -92,7 +94,7 @@ def embedding(args: WorkflowInput, context: Context) -> dict:
                 log(f"❌ Job canceled: {args.dataset}.")
                 return {'dataset': args.dataset, 'meta_items': []}
             snapshot = img['meta']['processed_storage_id']
-            img['meta']['vector_siglip'] = end_res[i].tolist()
+            img['meta']['vector'] = end_res[i].tolist()
             try:
                 if args.dataset == 'alpha':
                     del img['meta']['hash']
@@ -101,7 +103,7 @@ def embedding(args: WorkflowInput, context: Context) -> dict:
                 # print(img['id'], img['meta'])
                 ds.update_by_id(img['id'], img['meta'])
                 log(f'🔥 ({snapshot}) Updated meta.')
-                del img['meta']['vector_siglip']
+                del img['meta']['vector']
                 meta_items.append({'id': img['id'], **img['meta']})
             except Exception as e:
                 log(f'❌ ({snapshot}) Error updating meta: {e}')

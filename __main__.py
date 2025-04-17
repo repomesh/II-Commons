@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import argparse
-import logging
-import sys
-import atexit
-import nltk
-from typing import Optional
-from lib.config import GlobalConfig
-from workflows.fetch import run_host as run_dataset_fetch_host, run_worker as run_dataset_fetch_worker
-from workflows.embedding_text import run_host as run_embedding_text_host, run_worker as run_embedding_text_worker
-from workflows.embedding_image import run_host as run_embedding_image_host, run_worker as run_embedding_image_worker
-from workflows.caption import run_host as run_caption_host, run_worker as run_caption_worker
+from bin.analyze import run as run_analyze
 from bin.fusion import query as query
 from bin.fusion_lite import query as query_lite
-from bin.analyze import run as run_analyze
+from lib.config import GlobalConfig
+from typing import Optional
+from workflows.caption import run_host as run_caption_host, run_worker as run_caption_worker
+from workflows.embedding_image import run_host as run_embedding_image_host, run_worker as run_embedding_image_worker
+from workflows.embedding_text import run_host as run_embedding_text_host, run_worker as run_embedding_text_worker
+from workflows.fetch import run_host as run_dataset_fetch_host, run_worker as run_dataset_fetch_worker
+import argparse
+import atexit
+import logging
+import sys
 
 logging.basicConfig(
     level=GlobalConfig.LOG_LEVEL,
