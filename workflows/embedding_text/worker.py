@@ -8,11 +8,14 @@ import os
 import tempfile
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 WORKFLOW = 'Embedding_Text'
 WORKER = 'Embedding_Text'
-SLOTS = int(os.environ.get('WORKER_SLOTS_EMBEDDING_TEXT', '5'))
+SLOTS = int(os.environ.get('WORKER_SLOTS_EMBEDDING_TEXT', '10'))
 
+# Create a thread pool for database operations
+db_executor = ThreadPoolExecutor(max_workers=10)
 
 def insert_records_batch(ds, items):
     """Insert a batch of records into the database"""
@@ -35,9 +38,10 @@ def insert_records_batch(ds, items):
             record['vector'],
         ))
     try:
-        batch_insert(insert_query, records)
+        # Submit the database operation to the thread pool and continue without waiting
+        db_executor.submit(batch_insert, insert_query, records)
     except Exception as e:
-        print(f"Failed to insert records: {e}")
+        print(f"Failed to submit database operation: {e}")
 
 
 EmbeddingWorkflow = hatchet.workflow(
