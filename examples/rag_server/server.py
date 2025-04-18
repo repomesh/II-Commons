@@ -1,7 +1,10 @@
+from dotenv import load_dotenv
+load_dotenv()
+from fastmcp import FastMCP
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
-from . import handler
+import handler
 
 class TextRequest(BaseModel):
     query: str
@@ -15,18 +18,32 @@ class TextRequest(BaseModel):
             }
         }
 
+class SearchResp(BaseModel):
+    results: list
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "results": [
+                    {
+                        "score": 0.5678,
+                        "url": "http://example.com",
+                    }
+                ]
+            }
+        }
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        handler.init()
+        await handler.init()
     except Exception as e:
         print(f"Failed to initialize services: {str(e)}")
         raise e
 
     yield
 
-    handler.clean()
+    await handler.clean()
 
 app = FastAPI(
     lifespan=lifespan,
@@ -38,11 +55,10 @@ app = FastAPI(
     root_path="/api/v1"
 )
 
-
-@app.post("/search", tags=["Search"])
+@app.post("/search", response_model=SearchResp, tags=["Search"], operation_id="cg_search")
 async def search_text(request: TextRequest):
     """
-    Search for similar images using a text description.
+    Seek common ground knowledge using a text query.
 
     Args:
         request (TextRequest): The search request containing text query and pagination parameters
@@ -60,3 +76,51 @@ async def search_text(request: TextRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+    
+# Generate an MCP server directly from the FastAPI app
+mcp_server = FastMCP.from_fastapi(app)
+
+if __name__ == "__main__":
+    import os
+    import signal
+    from multiprocessing import Process
+    import uvicorn
+    port = os.getenv("RAG_SERVER_PORT", 8080)
+    port = int(port)
+    mcp_port = os.getenv("RAG_MCP_SERVER_PORT", port + 1)
+    mcp_port = int(mcp_port)
+
+
+    def run_mcp_server():
+        import asyncio
+        print(f"Starting MCP server on port {mcp_port}...")
+        asyncio.run(mcp_server.run_sse_async(host="0.0.0.0", port=mcp_port))
+
+    def run_uvicorn_server():
+        print(f"Starting Uvicorn server on port {port}...")
+        uvicorn.run(app, host="0.0.0.0", port=port)
+
+# Create separate processes for MCP server and Uvicorn server
+    mcp_process = Process(target=run_mcp_server)
+    uvicorn_process = Process(target=run_uvicorn_server)
+
+    # Function to handle SIGINT (Ctrl+C)
+    def handle_sigint(signal_number, frame):
+        print("\nShutting down gracefully...")
+        mcp_process.terminate()
+        uvicorn_process.terminate()
+        mcp_process.join()
+        uvicorn_process.join()
+        print("All processes terminated.")
+        exit(0)
+
+    # Register the signal handler
+    signal.signal(signal.SIGINT, handle_sigint)
+
+    # Start both processes
+    mcp_process.start()
+    uvicorn_process.start()
+
+    # Wait for both processes to complete
+    mcp_process.join()
+    uvicorn_process.join()

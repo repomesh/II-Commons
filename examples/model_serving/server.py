@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
@@ -23,3 +26,15 @@ def get_embeddings(request: EmbeddingRequest):
         return embeddings.tolist()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+if __name__ == "__main__":
+    import uvicorn
+    import os
+
+    if __name__ == "__main__":
+        
+        port = os.getenv("MODEL_API_PORT", 8001)
+        port = int(port)
+        
+        uvicorn.run(app, host="0.0.0.0", port=port)

@@ -1,6 +1,8 @@
 from psycopg_pool import AsyncConnectionPool
 import requests
 import os
+import asyncio
+from . import db_helper
 
 # TABLE_NAME = "ts_text_0000002_en"
 TABLE_NAME = "ts_ms_marco"
@@ -90,6 +92,16 @@ async def execute_query(sql, values=None):
             return await query_db(cur, sql, values)
 
 async def query(topic, max_results=100):
+    # Dynamically construct the function name based on TABLE_NAME
+    v_search_fn_name = f"tempalte_vector_search_{TABLE_NAME}"
+    bm25_search_fn_name = f"tempalte_bm25_search_{TABLE_NAME}"
+    if not hasattr(db_helper, v_search_fn_name):
+        raise AttributeError(f"Function '{v_search_fn_name}' not found in db_helper.")
+    if not hasattr(db_helper, bm25_search_fn_name):
+        raise AttributeError(f"Function '{bm25_search_fn_name}' not found in db_helper.")
+    v_search_tmpl_builder = getattr(db_helper, v_search_fn_name)
+    bm25_search_tmpl_builder = getattr(db_helper, bm25_search_fn_name)
+
     await init()
 
     tp_resp = {"sentences": [topic], "keywords": [topic]}
@@ -101,14 +113,12 @@ async def query(topic, max_results=100):
     print("> Embedding vector search...")
     tasks = []
     for e in eb_resp:
+        sql, values = v_search_tmpl_builder(TABLE_NAME, e)
         tasks.append(
             asyncio.create_task(
                 execute_query(
-                    f"""SELECT id, item_id, answers, query, passage_text, is_selected, url, query_id, query_type, well_formed_answers, passage_id,
-                    (vector <=> %s::vector) as distance,
-                    ((2 - (vector <=> %s::vector)) / 2) as similarity
-                    FROM {TABLE_NAME} order by (vector <=> %s::vector) ASC OFFSET %s LIMIT %s""",
-                    (e, e, e, 0, 100)
+                    sql,
+                    values
                 )
             )
         )
@@ -128,14 +138,12 @@ async def query(topic, max_results=100):
     print("> BM25 search...")
     bm25_tasks = []
     for b in tp_resp['keywords']:
+        sql, values = bm25_search_tmpl_builder(TABLE_NAME, b)
         bm25_tasks.append(
             asyncio.create_task(
                 execute_query(
-                    f"""SELECT id, item_id, answers, query, passage_text, is_selected, url, query_id, query_type, passage_id,
-                    well_formed_answers, paradedb.score(passage_text) as score
-                    FROM {TABLE_NAME} WHERE passage_text @@@ %s
-                    ORDER BY score DESC OFFSET %s LIMIT %s""",
-                    (b, 0, 100)
+                    sql,
+                    values
                 )
             )
         )
@@ -198,11 +206,6 @@ async def query(topic, max_results=100):
 
 
 if __name__ == "__main__":
-    import asyncio
     from dotenv import load_dotenv
     load_dotenv()
     asyncio.run(query("what cut is a bolar roast"))
-
-__all__ = [
-    "query",
-]

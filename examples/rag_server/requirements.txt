@@ -9,3 +9,5 @@ openAI
 python-dotenv
 uvicorn
 pydantic
+fastapi
+fastmcp

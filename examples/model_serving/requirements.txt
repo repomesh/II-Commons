@@ -3,4 +3,6 @@ uvicorn
 pydantic
 sentence_transformers
 xformers
+torch
 torchvision
+fastapi
