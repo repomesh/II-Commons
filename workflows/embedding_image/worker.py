@@ -15,14 +15,12 @@ import time
 
 dataset_name = None
 src_ds, dst_ds = None, None
-buffer = []
-last_item = 0
-limit = 0
+last_item, limit, buffer = 0, 0, []
 
 
 def get_unprocessed(name):
-    # worker_count, worker_order = heartbeat(name)
-    worker_count, worker_order = 1, 0
+    worker_count, worker_order = heartbeat(name)
+    # worker_count, worker_order = 1, 0
     return src_ds.get_unprocessed(
         limit=BATCH_SIZE, offset=last_item,
         mod_by=worker_count, mod_remain=worker_order
@@ -30,12 +28,12 @@ def get_unprocessed(name):
 
 
 def trigger(force=False):
-    global buffer, dataset_name
+    global buffer
     if force or len(buffer) >= BATCH_SIZE:
         if GlobalConfig.DRYRUN:
             print(f"Dryrun: {buffer}")
         else:
-            embedding({'dataset': dataset_name, 'meta_items': buffer})
+            embedding({'meta_items': buffer})
         buffer = []
 
 
@@ -48,17 +46,17 @@ def embedding(args) -> dict:
     for meta in meta_items:
         snapshot = src_ds.snapshot(meta)
         print(f'✨ Processing item: {snapshot}')
-        s3_address = meta['processed_storage_id'] if args['dataset'] == 'alpha' else meta['origin_storage_id']
+        s3_address = meta['processed_storage_id'] if dataset_name == 'alpha' else meta['origin_storage_id']
         filename = os.path.join(temp_path.name, f"{meta['hash']}.jpg")
         try:
             download_file(s3_address, filename)
             print(f'Downloaded {s3_address} to: {filename}')
             ps_result = process(filename)
             id = meta['id']
-            if args['dataset'] == 'alpha':
+            if dataset_name == 'alpha':
                 meta['processed_storage_id'] = s3_address
             # alpha does not need processed image
-            elif args['dataset'] != 'alpha' and ps_result['processed']:
+            elif dataset_name != 'alpha' and ps_result['processed']:
                 subfix = '.processed.jpg'
                 sub_name = f"{meta['hash']}{subfix}"
                 filename = os.path.join(temp_path.name, sub_name)
@@ -91,7 +89,7 @@ def embedding(args) -> dict:
             snapshot = img['meta']['processed_storage_id']
             img['meta']['vector'] = end_res[i].tolist()
             try:
-                if args['dataset'] == 'alpha':
+                if dataset_name == 'alpha':
                     del img['meta']['hash']
                     del img['meta']['origin_storage_id']
                     del img['meta']['processed_storage_id']
@@ -106,15 +104,11 @@ def embedding(args) -> dict:
     else:
         print('❌ No embedding result.')
     print('👌 Done!')
-    return {
-        'dataset': args['dataset'],
-        'meta_items': meta_items,
-    }
+    return {'meta_items': meta_items}
 
 
 def run(name):
-    global buffer, last_item, dataset_name, src_ds, dst_ds
-    dataset_name = name
+    global buffer, last_item, src_ds, dst_ds
     i = 0
     try:
         src_ds = init(name)
@@ -122,9 +116,9 @@ def run(name):
         print(f"❌ Unable to init src-dataset: {name}. Error: {e}")
         sys.exit(1)
     try:
-        dst_ds = init(dataset_name)
+        dst_ds = init(name)
     except Exception as e:
-        print(f"❌ Unable to init dst-dataset: {dataset_name}. Error: {e}")
+        print(f"❌ Unable to init dst-dataset: {name}. Error: {e}")
         sys.exit(1)
     meta_items = get_unprocessed(name)
     while len(meta_items) > 0:
@@ -149,7 +143,7 @@ def run(name):
             break
         meta_items = get_unprocessed(name)
     trigger(force=True)
-    print('Done!')
+    print('All Done!')
 
 
 __all__ = [

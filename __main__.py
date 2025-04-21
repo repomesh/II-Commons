@@ -8,7 +8,7 @@ from lib.config import GlobalConfig
 from typing import Optional
 # from workflows.caption import run_host as run_caption_host, run_worker as run_caption_worker
 from workflows.embedding_image import run_worker as run_embedding_image_worker
-# from workflows.embedding_text import run_host as run_embedding_text_host, run_worker as run_embedding_text_worker
+from workflows.embedding_text import run_worker as run_embedding_text_worker
 # from workflows.fetch import run_host as run_dataset_fetch_host, run_worker as run_dataset_fetch_worker
 import argparse
 import atexit
@@ -35,9 +35,9 @@ atexit.register(cleanup)
 def run_worker(worker_name: str, dataset_name: str):
     # if worker_name == 'dataset_fetch':
     #     run_dataset_fetch_worker()
-    # elif worker_name == 'embedding_text':
-    #     run_embedding_text_worker()
-    if worker_name == 'embedding_image':
+    if worker_name == 'embedding_text':
+        run_embedding_text_worker(dataset_name)
+    elif worker_name == 'embedding_image':
         run_embedding_image_worker(dataset_name)
     # elif worker_name == 'caption':
     #     run_caption_worker()

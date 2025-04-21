@@ -123,9 +123,11 @@ def init(dataset):
                     url VARCHAR NOT NULL,
                     title VARCHAR NOT NULL DEFAULT '',
                     origin_storage_id VARCHAR(1024) NOT NULL DEFAULT '',
+                    ignored BOOLEAN NOT NULL DEFAULT FALSE,
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )""",
+                f'CREATE INDEX IF NOT EXISTS {table_name}_ignored_index ON {table_name} (ignored)',
             ]
             init('text_0000001_en')
             init('text_0000002_en')
