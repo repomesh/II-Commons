@@ -13,7 +13,10 @@ MAX_DISTANCE = 2
 MAX_SCORE = 50
 TEXT_EMBEDDING_MODEL = 'Snowflake/snowflake-arctic-embed-m-v2.0'
 RERANK_MODEL = 'jinaai/jina-reranker-m0'
-
+SELF_HOST_MODEL_SERVER_URL_BASE = os.getenv("MODEL_SERVER_URL_BASE", "http://localhost:8001")
+USE_JINA_RERANK_API = os.getenv("USE_JINA_RERANK_API", "false").lower() == "true"
+if USE_JINA_RERANK_API:
+    print("> Using Jina Rerank API...")
 class QueryConfiguration(BaseModel):
     refine_query: bool = False
     rerank: bool = False
@@ -74,14 +77,12 @@ def fusion_sort_key(result):
     return fusion_score
 
 def text_encode(input: list) -> list:
-    base_url = os.getenv("MODEL_SERVER_URL_BASE", "http://localhost:8001")
-
     headers = {"Content-Type": "application/json"}
     data = {
         "queries": input,
         "prompt_name": "query"
     }
-    response = requests.post(f"{base_url}/embedding", json=data, headers=headers)
+    response = requests.post(f"{SELF_HOST_MODEL_SERVER_URL_BASE}/embedding", json=data, headers=headers)
 
 
     if response.status_code == 200:
@@ -110,20 +111,51 @@ async def execute_query(sql, values=None):
 async def refine_query(topic):
     return {"sentences": [topic], "keywords": [topic]}
 
-def rerank(query, documents):
-    base_url = os.getenv("MODEL_SERVER_URL_BASE", "http://localhost:8001")
-    headers = {"Content-Type": "application/json"}
-    data = {
-        "query": query,
-        "documents": documents
-    }
-    response = requests.post(f"{base_url}/rerank", json=data, headers=headers)
+def rerank(query, documents, max_results):
+    if USE_JINA_RERANK_API:
+        JINA_API_KEY = os.getenv("JINA_API_KEY")
+        if not JINA_API_KEY:
+            raise EnvironmentError("JINA_API_KEY environment variable is not set.")
+        url = 'https://api.jina.ai/v1/rerank'
 
-    if response.status_code == 200:
-        return response.json()
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f"Bearer {JINA_API_KEY}"
+        }
+
+        docs = [{"text": doc} for doc in documents]
+        data = {
+            "model": "jina-reranker-m0",
+            "query": "small language model data extraction",
+            "top_n": f"{max_results}",
+            "documents": docs
+        }
+        response = requests.post(url, json=data, headers=headers)
+        if response.status_code == 200:
+            resp = response.json()
+            scores = [0] * len(documents)
+            for item in resp['results']:
+                index = item["index"]
+                score = item["relevance_score"]
+                if index < len(documents):
+                    scores[index] = score
+            return scores
+        else:
+            print("Error:", response.status_code, response.text)
+            return [0] * len(documents)
     else:
-        print("Error:", response.status_code, response.text)
-        return [0] * len(documents)
+        headers = {"Content-Type": "application/json"}
+        data = {
+            "query": query,
+            "documents": documents
+        }
+        response = requests.post(f"{SELF_HOST_MODEL_SERVER_URL_BASE}/rerank", json=data, headers=headers)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print("Error:", response.status_code, response.text)
+            return [0] * len(documents)
 
 def chunk_by_sentence(document):
     return nltk.sent_tokenize(document)
@@ -279,7 +311,7 @@ async def query(topic, max_results=100, config=QueryConfiguration()):
     if config.rerank:
         print("> Reranking...")
         # Rerank the results based on the fusion score
-        scores = rerank(topic, [row['text'][:4096] for row in m_res])
+        scores = rerank(topic, [row['text'][:4096] for row in m_res], max_results)
         for i in range(len(m_res)):
             m_res[i]['rank_score'] = scores[i]
     else:
