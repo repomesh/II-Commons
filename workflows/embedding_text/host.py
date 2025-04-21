@@ -2,19 +2,20 @@ from lib.config import GlobalConfig
 from lib.dataset import init
 from lib.hatchet import push_dataset_event
 from lib.utilitas import sha256
-
-BATCH_SIZE = 1
+import time
+BATCH_SIZE = 30
 
 dataset_name = None
 buffer = []
 ds = None
-last_item = 0
+last_item = 349860
 limit = 0
 default_ds_name = 'text_0000002_en'
 
 
 def trigger(force=False):
     global buffer
+    # start_time = time.time()
     if force or len(buffer) >= BATCH_SIZE:
         if GlobalConfig.DRYRUN:
             print(f"Dryrun: {buffer}")
@@ -25,16 +26,25 @@ def trigger(force=False):
                 ds_name = dataset_name
             push_dataset_event('embedding_text', ds_name, buffer)
         buffer = []
+    # print(
+    #     f'Submitting {len(buffer)} rows took {time.time() - start_time:.2f} seconds.'
+    # )
 
 
 def get_unprocessed():
     match dataset_name:
         case 'wikipedia_en':
-            return ds.query(
-                f"SELECT id, origin_storage_id FROM {ds.get_table_name()}"
-                + f' WHERE id > %s ORDER BY id ASC LIMIT %s',
-                (last_item, BATCH_SIZE)
+            # start_time = time.time()
+            resp = ds.query(
+                f"SELECT id, origin_storage_id FROM {ds.get_table_name()} t"
+                + f' WHERE NOT EXISTS (SELECT 1 from ts_{default_ds_name} s'
+                + ' WHERE s.source_id = t.id) AND id > %s'
+                + ' ORDER BY id ASC LIMIT %s', (last_item, BATCH_SIZE)
             )
+            # print(
+            #     f'Fetching {BATCH_SIZE} rows took {time.time() - start_time:.2f} seconds.'
+            # )
+            return resp
         case _:
             raise ValueError(f'Unsupported dataset: {dataset_name}')
 

@@ -292,6 +292,7 @@ def init(dataset):
                 f'CREATE INDEX IF NOT EXISTS {table_name}_similar_to_index ON {table_name} (similar_to)',
                 f'CREATE INDEX IF NOT EXISTS {table_name}_created_at_index ON {table_name} (created_at)',
                 f'CREATE INDEX IF NOT EXISTS {table_name}_updated_at_index ON {table_name} (updated_at)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_vector_null_index ON {table_name} (vector) WHERE vector IS NULL',
             ]
     for sql in list_sql:
         res = execute(sql)
@@ -416,12 +417,19 @@ def update_by_id(dataset, id, data, deplicate_ignore=[], tail=''):
     return result
 
 
-def get_unprocessed(dataset, limit=10, offset=0):
+def get_unprocessed(dataset, limit=10, offset=0, mod_m=None, mod_n=None):
     table_name = get_table_name(dataset)
+    where_conditions = ['(processed_storage_id = %s OR vector IS NULL)']
+    params = ['']
+
+    if mod_m is not None and mod_n is not None:
+        where_conditions.append('id %% %s = %s')
+        params.extend([mod_m, mod_n])
+
     resp = query(f'SELECT * FROM {table_name}'
-                 + ' WHERE (processed_storage_id = %s OR vector IS NULL)'
+                 + ' WHERE ' + ' AND '.join(where_conditions)
                  + ' AND id > %s ORDER BY id ASC LIMIT %s',
-                 ('', offset, limit))
+                 tuple(params + [offset, limit]))
     res = []
     for item in resp:
         for field in item.keys():

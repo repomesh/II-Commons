@@ -34,9 +34,11 @@ def push_dataset_event(type, dataset, meta_items):
             print(f'Event `{event}` submitted with {count} items.')
         return push(event, {'dataset': dataset, 'meta_items': meta_items})
 
+
 class WorkflowInput(BaseModel):
     dataset: str
     meta_items: list[dict]
+
 
 def concurrency(max_runs):
     return ConcurrencyExpression(
@@ -57,7 +59,7 @@ def set_signal_handler():
     signal.signal(signal.SIGQUIT, signal_handler)
 
 
-hatchet = Hatchet(debug=GlobalConfig.DEBUG)
+# hatchet = Hatchet(debug=GlobalConfig.DEBUG)
 
 __all__ = [
     'LIMIT_EXPRESSION',
