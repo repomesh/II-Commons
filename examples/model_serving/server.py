@@ -7,18 +7,22 @@ from typing import List, Optional
 from sentence_transformers import SentenceTransformer
 from contextlib import asynccontextmanager
 import torch
-from transformers import AutoModel
+from transformers import AutoModel, AutoProcessor, AutoTokenizer, AutoModel
 
 # Load the model
 embedding_model_name = 'Snowflake/snowflake-arctic-embed-m-v2.0'
 embedding_model = None
 rerank_model_name = 'jinaai/jina-reranker-m0'
 rerank_model = None
-
+siglip_model_name = "google/siglip2-so400m-patch16-naflex"
+siglip_tokenizer = None
+siglip_model = None
+siglip_processor = None
+device = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        global rerank_model, embedding_model
+        global device, rerank_model, embedding_model, siglip_tokenizer, siglip_model, siglip_processor
         if torch.cuda.is_available():
             print('> 🐧 Using CUDA...')
             device = torch.device('cuda')
@@ -45,6 +49,11 @@ async def lifespan(app: FastAPI):
         )
         rerank_model.to(device)
         rerank_model.eval()
+
+        siglip_model = AutoModel.from_pretrained(siglip_model_name).to(device)
+        siglip_processor = AutoProcessor.from_pretrained(siglip_model_name)
+        siglip_tokenizer = AutoTokenizer.from_pretrained(siglip_model_name)
+    
     except Exception as e:
         print(f"Failed to initialize services: {str(e)}")
         raise e
@@ -57,6 +66,17 @@ async def lifespan(app: FastAPI):
     if rerank_model:
         del rerank_model
         rerank_model = None
+    if siglip_model:
+        del siglip_model
+        siglip_model = None
+    if siglip_processor:
+        del siglip_processor
+        siglip_processor = None
+    if siglip_tokenizer:
+        del siglip_tokenizer
+        siglip_tokenizer = None
+    print("Models cleaned up.")
+    print("Lifespan context manager finished.")
 
 # Initialize FastAPI app
 app = FastAPI(    
@@ -77,6 +97,9 @@ class EmbeddingRequest(BaseModel):
 class RerankRequest(BaseModel):
     query: str
     documents: List[str]
+
+class SiglipTextEmbeddingRequest(BaseModel):
+    queries: List[str]
 
 @app.post("/embedding")
 def get_embeddings(request: EmbeddingRequest):
@@ -99,6 +122,20 @@ def rerank(request: RerankRequest):
         return scores
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/siglip/encode_text")
+def siglip(request: SiglipTextEmbeddingRequest):
+    try:
+        global siglip_model, siglip_tokenizer
+        inputs = siglip_tokenizer(
+            request.queries, padding=True, truncation=True, max_length=64, return_tensors='pt'
+        ).to(device)
+        with torch.no_grad():
+            text_features = siglip_model.get_text_features(**inputs)
+        return text_features.cpu().numpy()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     import uvicorn
