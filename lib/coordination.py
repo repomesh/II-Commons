@@ -3,7 +3,7 @@ from lib.psql import query
 import uuid
 
 TABLE_NAME = 'workers'
-LIVE_TIME = 20  # 60 * 10
+LIVE_TIME = 60 * 3
 _uuid = None
 
 
@@ -12,6 +12,7 @@ def init_table():
         f"""CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
             id BIGSERIAL PRIMARY KEY,
             uuid VARCHAR NOT NULL,
+            workflow VARCHAR NOT NULL,
             last_heartbeat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         )""",
         f'CREATE UNIQUE INDEX IF NOT EXISTS {TABLE_NAME}_uuid_index ON {TABLE_NAME} (uuid)',
@@ -21,11 +22,14 @@ def init_table():
         query(sql)
 
 
-def heartbeat():
+def heartbeat(workflow):
     global _uuid
     if _uuid is None:
         init_table()
         _uuid = str(uuid.uuid4())
+    if workflow is None:
+        raise Exception("Workflow is required")
+    workflow = str(workflow).upper()
     now = time()
     # delete expired workers
     query(
@@ -34,11 +38,14 @@ def heartbeat():
     )
     # register new worker
     query(
-        f"INSERT INTO {TABLE_NAME} (uuid, last_heartbeat) VALUES (%s, to_timestamp(%s)) ON CONFLICT (uuid) DO UPDATE SET last_heartbeat = to_timestamp(%s)",
-        (_uuid, now, now)
+        f"INSERT INTO {TABLE_NAME} (uuid, workflow, last_heartbeat) VALUES (%s, %s, to_timestamp(%s)) ON CONFLICT (uuid) DO UPDATE SET last_heartbeat = to_timestamp(%s)",
+        (_uuid, workflow, now, now)
     )
     # get all workers
-    workers = query(f"SELECT * FROM {TABLE_NAME} ORDER BY id ASC")
+    workers = query(
+        f"SELECT * FROM {TABLE_NAME} WHERE workflow = %s ORDER BY id ASC",
+        (workflow,)
+    )
     # get current worker
     order = next((i for i, w in enumerate(
         workers) if w['uuid'] == _uuid), None)
@@ -46,12 +53,12 @@ def heartbeat():
         raise Exception("Worker not found")
     # return
     count = len(workers)
-    print(f'❤️ [{_uuid}] Heartbeat: {order} / {count}')
+    print(f'❤️ [{workflow}:{_uuid}] Heartbeat: {order} / {count}')
     return count, order
 
 
 if __name__ == '__main__':
-    heartbeat()
+    heartbeat('testing')
 
 __all__ = [
     'init_table',

@@ -24,5 +24,6 @@ requests
 scenedetect
 scipy
 sentence_transformers
+torchvision
 # vllm
 yt-dlp

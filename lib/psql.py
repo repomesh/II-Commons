@@ -59,7 +59,7 @@ def ensure_vector_extension():
     # https://docs.vectorchord.ai/vectorchord/getting-started/overview.html
     sqls = [
         'CREATE EXTENSION IF NOT EXISTS vchord CASCADE',
-        # 'SET vectors.hnsw_ef_search = 100'
+        # 'SET vchordrq.probes = 100'
     ]
     for sql in sqls:
         res = execute(sql)
@@ -417,14 +417,14 @@ def update_by_id(dataset, id, data, deplicate_ignore=[], tail=''):
     return result
 
 
-def get_unprocessed(dataset, limit=10, offset=0, mod_m=None, mod_n=None):
+def get_unprocessed(dataset, limit=10, offset=0, mod_by=None, mod_remain=None):
     table_name = get_table_name(dataset)
     where_conditions = ['(processed_storage_id = %s OR vector IS NULL)']
     params = ['']
 
-    if mod_m is not None and mod_n is not None:
+    if mod_by is not None and mod_remain is not None:
         where_conditions.append('id %% %s = %s')
-        params.extend([mod_m, mod_n])
+        params.extend([mod_by, mod_remain])
 
     resp = query(f'SELECT * FROM {table_name}'
                  + ' WHERE ' + ' AND '.join(where_conditions)

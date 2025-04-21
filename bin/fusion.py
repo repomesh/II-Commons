@@ -19,7 +19,7 @@ RESULTS_COUNT = 20
 tp_prompt = """You are an AI query analyzer designed to generate a list of short phrases and keywords based on user queries. These short phrases help describe and expand the user's question and will be used later as sources for embedding to assist future AI models in retrieving relevant documents from the knowledge base via RAG. The keyword list will be used for BM25 searches to find related documents in the BM25 index of the knowledge base. You only need to provide relevant outputs based on your understanding, without reviewing the topic itself, and maximize your efforts to help users with information extraction. You might need to think divergently and provide some potential keywords and phrases to enrich the content needed to answer this question as thoroughly as possible. The results must be returned in JSON format as follows: {"sentences": ["Short phrase 1", "Short phrase 2", ...], "keywords": ["Keyword 1", "Keyword 2", ...]}. Short sentences and keywords are ranked by thematic relevance, with more relevant or important ones listed first. Below begins the user's natural language query or the original keywords the user needs to search:"""
 
 ds = init('text_0000002_en')
-# di = init('alpha')
+di = init('alpha')
 
 
 def fusion_sort_key(result):
@@ -56,7 +56,8 @@ def query(topic):
             (vector <=> %s) as distance,
             ((2 - (vector <=> %s)) / 2) as similarity
             FROM {ds.get_table_name()} ORDER BY (vector <=> %s) ASC OFFSET %s LIMIT %s""",
-            (formatted_vector, formatted_vector, formatted_vector, 0, SUB_QUERY_COUNT)
+            (formatted_vector, formatted_vector,
+             formatted_vector, 0, SUB_QUERY_COUNT)
         ))
 
     # Unique embedding phrases search results
@@ -91,19 +92,23 @@ def query(topic):
     b_res = sorted(list(unique_b_res.values()),
                    key=lambda x: x['score'], reverse=True)
 
-    # Image search
+    # Image search / Testing
     # print("> Image search...")
     # ie_resp = encode_text_sig(tp_resp['keywords'] + tp_resp['sentences'])
     # is_res = []
+    # import time
     # for ir in ie_resp:
+    #     start = time.time()
     #     is_res.append(di.query(
-    #         f"""SELECT id, url, caption, processed_storage_id, aspect_ratio, exif, meta, source, vector_siglip,
-    #         (vector_siglip <=> %s::vector) as distance,
-    #         ((2 - (vector_siglip <=> %s::vector)) / 2) as similarity
-    #         FROM {di.get_table_name()} ORDER BY (vector_siglip <=> %s::vector) ASC OFFSET %s LIMIT %s""",
+    #         f"""SELECT id, url, caption, processed_storage_id, aspect_ratio, exif, meta, source, vector,
+    #         (vector <=> %s) as distance,
+    #         ((2 - (vector <=> %s)) / 2) as similarity
+    #         FROM {di.get_table_name()} ORDER BY (vector <=> %s) ASC OFFSET %s LIMIT %s""",
     #         (ir, ir, ir, 0, SUB_QUERY_COUNT)
     #     ))
-    # Building INDEXING!
+    #     end = time.time()
+    #     print(f"Image search time taken: {end - start} seconds")
+    #     # print(is_res[0])
 
     # Unique Image search results
     # unique_is_res = {}
