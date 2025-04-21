@@ -11,15 +11,15 @@ import sys
 import tempfile
 import time
 
-BATCH_SIZE = 30
+BATCH_SIZE = 100
 last_item, limit, buffer = 0, 0, []
 src_ds, dst_ds = None, None
 source_db, default_ds_name = None, 'text_0000002_en'
 
 
 def get_unprocessed(name):
-    # worker_count, worker_order = heartbeat(name)
-    worker_count, worker_order = 1, 0
+    worker_count, worker_order = heartbeat(name)
+    # worker_count, worker_order = 1, 0
     # start_time = time.time()
     resp = src_ds.query(
         f"SELECT id, origin_storage_id FROM {src_ds.get_table_name()} t"
@@ -66,6 +66,7 @@ def embedding(args) -> dict:
             json = read_json(filename)
             if len(json['text']) == 0:
                 src_ds.update_by_id(meta['id'], {'ignored': True})
+                print(f'✅ ({snapshot}) Ignored: empty text')
                 continue
             texts.append({
                 'id': meta['id'], 'text': json['text'], 'meta': json,
