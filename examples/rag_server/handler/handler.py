@@ -2,14 +2,29 @@ from psycopg_pool import AsyncConnectionPool
 import requests
 import os
 import asyncio
+from pydantic import BaseModel
 from . import db_helper
+import nltk
 
-# TABLE_NAME = "ts_text_0000002_en"
-TABLE_NAME = "ts_ms_marco"
+TABLE_NAME = "ts_text_0000002_en"
+# TABLE_NAME = "ts_ms_marco"
 pool = None
 MAX_DISTANCE = 2
 MAX_SCORE = 50
 TEXT_EMBEDDING_MODEL = 'Snowflake/snowflake-arctic-embed-m-v2.0'
+RERANK_MODEL = 'jinaai/jina-reranker-m0'
+
+class QueryConfiguration(BaseModel):
+    refine_query: bool = False
+    rerank: bool = False
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "refine_query": False,
+                "rerank": False,
+            }
+        }
 
 async def init_db():
     global pool
@@ -43,6 +58,7 @@ async def clean_db():
 
 async def init():
     await init_db()
+    nltk.download('punkt_tab')
 
 async def clean():
     await clean_db()
@@ -90,8 +106,29 @@ async def execute_query(sql, values=None):
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
             return await query_db(cur, sql, values)
+        
+async def refine_query(topic):
+    return {"sentences": [topic], "keywords": [topic]}
 
-async def query(topic, max_results=100):
+def rerank(query, documents):
+    base_url = os.getenv("MODEL_SERVER_URL_BASE", "http://localhost:8001")
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "query": query,
+        "documents": documents
+    }
+    response = requests.post(f"{base_url}/rerank", json=data, headers=headers)
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print("Error:", response.status_code, response.text)
+        return [0] * len(documents)
+
+def chunk_by_sentence(document):
+    return nltk.sent_tokenize(document)
+
+async def query(topic, max_results=100, config=QueryConfiguration()):
     # Dynamically construct the function name based on TABLE_NAME
     v_search_fn_name = f"tempalte_vector_search_{TABLE_NAME}"
     bm25_search_fn_name = f"tempalte_bm25_search_{TABLE_NAME}"
@@ -105,6 +142,14 @@ async def query(topic, max_results=100):
     await init()
 
     tp_resp = {"sentences": [topic], "keywords": [topic]}
+
+    if refine_query:
+        print("> Refining query...")
+        tp_resp = await refine_query(topic)
+        if not tp_resp:
+            print("Refined query is empty, using original topic.")
+            tp_resp = {"sentences": [topic], "keywords": [topic]}
+
     # Embedding phrases
     print("> Embedding phrases...")
     eb_resp = text_encode(tp_resp["sentences"])
@@ -163,6 +208,7 @@ async def query(topic, max_results=100):
         reverse=True
     )
 
+
     # Merge Vector and BM25 search results
     merged_results = {}
     for row in e_res:
@@ -184,12 +230,66 @@ async def query(topic, max_results=100):
     m_res = sorted(merged_results.values(
     ), key=lambda x: x['distance'] if x['distance'] is not None else MAX_DISTANCE)
 
+ 
+    # Merge chunks
+    print("> Merge chunks...")
+    merged_results = {}
+    for row in m_res:
+        group_key = (row['source_id'], row['source_db'])
+        if group_key not in merged_results:
+            merged_results[group_key] = {**row, 'chunks': []}
+        merged_results[group_key]['distance'] = min(
+            merged_results[group_key]['distance'] if merged_results[group_key]['distance'] is not None else MAX_DISTANCE,
+            row['distance'] if row['distance'] is not None else MAX_DISTANCE
+        )
+        merged_results[group_key]['similarity'] = max(
+            merged_results[group_key]['similarity'] if merged_results[group_key]['similarity'] is not None else 0,
+            row['similarity'] if row['similarity'] is not None else 0
+        )
+        merged_results[group_key]['score'] = max(
+            merged_results[group_key]['score'] if merged_results[group_key]['score'] is not None else 0,
+            row['score'] if row['score'] is not None else 0
+        )
+        merged_results[group_key]['chunks'].append({
+            'chunk_index': row['chunk_index'],
+            'chunk_text': row['chunk_text']
+        })
+        merged_results[group_key]['chunks'].sort(
+            key=lambda x: x['chunk_index'])
+        merged_results[group_key].pop('chunk_index', None)
+        merged_results[group_key].pop('chunk_text', None)
+    m_res = sorted(merged_results.values(
+    ), key=lambda x: x['distance'] if x['distance'] is not None else MAX_DISTANCE)
+    for row in m_res:
+        for i, chunk in enumerate(row['chunks']):
+            if i > 0 and len(row['chunks']) > 1 \
+                    and row['chunks'][i-1]['chunk_index'] == row['chunks'][i]['chunk_index'] - 1:
+                row['chunks'][i]['chunk_text'] = chunk_by_sentence(
+                    chunk['chunk_text']
+                )
+                if len(row['chunks'][i]['chunk_text']) >= 3:
+                    row['chunks'][i]['chunk_text'] = row['chunks'][i]['chunk_text'][1:]
+                row['chunks'][i]['chunk_text'] = '...'.join(
+                    row['chunks'][i]['chunk_text']
+                )
+        row['text'] = '...'.join([c['chunk_text'] for c in row['chunks']])
+        del row['chunks']
     m_res = sorted(m_res, key=fusion_sort_key, reverse=True)
+
+    if config.rerank:
+        print("> Reranking...")
+        # Rerank the results based on the fusion score
+        scores = rerank(topic, [row['text'][:4096] for row in m_res])
+        for i in range(len(m_res)):
+            m_res[i]['rank_score'] = scores[i]
+    else:
+        for i in range(len(m_res)):
+            m_res[i]['rank_score'] = m_res[i].get('score', 0)
+    m_res = sorted(m_res, key=lambda x: x['rank_score'], reverse=True)
     m_res = m_res[:max_results]
 
-    # Print fusion results
     print("Fusion Results:")
-    print(f"{'Item ID':<10}    {'Passage ID':<10}    {'Is Selected':<5}    {'Distance':<15}    {'Score':<15}    {'URL':<50}    {'Passage Text':<30}")
+    print(f"{'ID':<10}    {'Distance':<15}    {'Score':<15}    {'Rank Score':<15}    {'Title':<50}    {'URL':<50}    {'Text':<90}")
     print("-" * 200)
     for row in m_res:
         distance = f"{row['distance']:.4f}" if isinstance(
@@ -197,10 +297,17 @@ async def query(topic, max_results=100):
         score = f"{row['score']:.4f}" if isinstance(
             row['score'], (int, float)) else "N/A"
         url = row.get('url', 'N/A')
+        if len(row['title']) >= 50:
+            title = f"{row['title'][:47]}..."
+        else:
+            title = row['title']
         if len(url) >= 50:
             url = f"{url[:47]}..."
-        passage_text = f"{row['passage_text']:<25}..."
-        print(f"{row['item_id']:<10}    {row['passage_id']:<10}    {row['is_selected']:<5}    {distance:<15}    {score:<15}    {url:<50}    {passage_text:<25}")
+        text = row['text'].replace('\n', ' ')
+        start = (len(text) - 80) // 2
+        text = f"...{text[start:start + 80 - 6]}..."
+        print(
+            f"{row['id']:<10}    {distance:<15}    {score:<15}    {row['rank_score']:<15}    {title:<50}    {url:<50}    {text:<80}")
 
     return m_res
 

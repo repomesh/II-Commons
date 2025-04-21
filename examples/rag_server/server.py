@@ -8,13 +8,17 @@ import handler
 
 class TextRequest(BaseModel):
     query: str
-    max_results: int = 5
+    max_results: int = 20
+    options: handler.QueryConfiguration = handler.QueryConfiguration()
 
     class Config:
         json_schema_extra = {
             "example": {
                 "query": "I want to know information about documentaries related to World War II.",
-                "max_results": 5,
+                "max_results": 20,
+                "options": {
+                    "rerank": True
+                },
             }
         }
 
@@ -71,7 +75,7 @@ async def search_text(request: TextRequest):
     """
     try:
         # Generate embedding for the input text
-        results = await handler.query(request.query, request.max_results)
+        results = await handler.query(request.query, request.max_results, request.options)
         return {"results": results}
 
     except Exception as e:
