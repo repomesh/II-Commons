@@ -34,3 +34,12 @@ def tempalte_bm25_search_ts_text_0000002_en(table_name: str, b: any) -> tuple:
     return sql, values
 
 
+def tempalte_vector_search_ii_alpha(table_name: str, e: any) -> tuple:
+    sql = f"""SELECT id, url, caption, processed_storage_id, aspect_ratio, exif, meta, source, vector,
+            (vector <=> %s::vector) as distance,
+            ((2 - (vector <=> %s::vector)) / 2) as similarity
+            FROM {table_name} ORDER BY (vector <=> %s::vector) ASC OFFSET %s LIMIT %s"""
+    values = (e, e, e, 0, SUB_QUERY_COUNT)
+
+    return sql, values
+

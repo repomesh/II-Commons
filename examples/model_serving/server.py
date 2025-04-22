@@ -123,7 +123,7 @@ def rerank(request: RerankRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-@app.post("/siglip/encode_text")
+@app.post("/siglip2/encode_text")
 def siglip(request: SiglipTextEmbeddingRequest):
     try:
         global siglip_model, siglip_tokenizer
@@ -132,7 +132,7 @@ def siglip(request: SiglipTextEmbeddingRequest):
         ).to(device)
         with torch.no_grad():
             text_features = siglip_model.get_text_features(**inputs)
-        return text_features.cpu().numpy()
+        return text_features.cpu().numpy().tolist()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

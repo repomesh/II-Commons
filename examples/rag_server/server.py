@@ -1,3 +1,4 @@
+from typing import List
 from dotenv import load_dotenv
 load_dotenv()
 from fastmcp import FastMCP
@@ -22,8 +23,19 @@ class TextRequest(BaseModel):
             }
         }
 
+class SearchResultTextItem(BaseModel):
+    score: float
+    url: str
+    title: str
+    text: str
+
+class SearchResultImageItem(BaseModel):
+    score: float
+    url: str
+    caption: str
 class SearchResp(BaseModel):
-    results: list
+    results: List[SearchResultTextItem]
+    images: List[SearchResultImageItem]
 
     class Config:
         json_schema_extra = {
@@ -32,6 +44,15 @@ class SearchResp(BaseModel):
                     {
                         "score": 0.5678,
                         "url": "http://example.com",
+                        "title": "Example Title",
+                        "text": "Example text content related to the query."
+                    }
+                ],
+                "images": [
+                    {
+                        "score": 0.1234,
+                        "url": "http://example.com/image.jpg",
+                        "caption": "Example image caption."
                     }
                 ]
             }
@@ -75,8 +96,8 @@ async def search_text(request: TextRequest):
     """
     try:
         # Generate embedding for the input text
-        results = await handler.query(request.query, request.max_results, request.options)
-        return {"results": results}
+        results, images = await handler.query(request.query, request.max_results, request.options)
+        return {"results": results, "images": images}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")

@@ -7,6 +7,8 @@ from . import db_helper
 import nltk
 
 TABLE_NAME = "ts_text_0000002_en"
+IMAGE_TABLE_NAME = "ii_alpha"
+
 # TABLE_NAME = "ts_ms_marco"
 pool = None
 MAX_DISTANCE = 2
@@ -19,7 +21,7 @@ if USE_JINA_RERANK_API:
     print("> Using Jina Rerank API...")
 class QueryConfiguration(BaseModel):
     refine_query: bool = False
-    rerank: bool = False
+    rerank: bool = True
 
     class Config:
         json_schema_extra = {
@@ -91,6 +93,21 @@ def text_encode(input: list) -> list:
     else:
         print("Error:", response.status_code, response.text)
         return []
+    
+def text_encode_sig(input: list) -> list:
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "queries": input,
+    }
+    response = requests.post(f"{SELF_HOST_MODEL_SERVER_URL_BASE}/siglip2/encode_text", json=data, headers=headers)
+
+    if response.status_code == 200:
+        # print("Embeddings:", response.json())
+        return response.json()
+    else:
+        print("Error:", response.status_code, response.text)
+        return []
+    
 
 
 async def query_db(cur, sql=None, values=None, **kwargs):
@@ -164,13 +181,17 @@ async def query(topic, max_results=100, config=QueryConfiguration()):
     # Dynamically construct the function name based on TABLE_NAME
     v_search_fn_name = f"tempalte_vector_search_{TABLE_NAME}"
     bm25_search_fn_name = f"tempalte_bm25_search_{TABLE_NAME}"
+    img_search_fn_name = f""f"tempalte_vector_search_{IMAGE_TABLE_NAME}"
+
     if not hasattr(db_helper, v_search_fn_name):
         raise AttributeError(f"Function '{v_search_fn_name}' not found in db_helper.")
     if not hasattr(db_helper, bm25_search_fn_name):
         raise AttributeError(f"Function '{bm25_search_fn_name}' not found in db_helper.")
+    if not hasattr(db_helper, img_search_fn_name):
+        raise AttributeError(f"Function '{img_search_fn_name}' not found in db_helper.")
     v_search_tmpl_builder = getattr(db_helper, v_search_fn_name)
     bm25_search_tmpl_builder = getattr(db_helper, bm25_search_fn_name)
-
+    img_search_tmpl_builder = getattr(db_helper, img_search_fn_name)
     await init()
 
     tp_resp = {"sentences": [topic], "keywords": [topic]}
@@ -341,7 +362,38 @@ async def query(topic, max_results=100, config=QueryConfiguration()):
         print(
             f"{row['id']:<10}    {distance:<15}    {score:<15}    {row['rank_score']:<15}    {title:<50}    {url:<50}    {text:<80}")
 
-    return m_res
+
+    # # Image search
+    # print("> Image search...")
+    # ie_resp = text_encode_sig(tp_resp['keywords'] + tp_resp['sentences'])
+    # tasks = []
+    # for ir in ie_resp:
+    #     sql, values = img_search_tmpl_builder(IMAGE_TABLE_NAME, ir)
+    #     tasks.append(
+    #         asyncio.create_task(
+    #             execute_query(
+    #                 sql,
+    #                 values
+    #             )
+    #         )
+    #     )
+    # is_res = await asyncio.gather(*tasks)
+
+
+    # unique_is_res = {}
+    # for result_set in is_res:
+    #     for row in result_set:
+    #         result_id = row['id']
+    #         result_distance = row['distance']
+    #         if result_id not in unique_is_res or result_distance < unique_is_res[result_id]['distance']:
+    #             unique_is_res[result_id] = row
+    # is_res = sorted(list(unique_is_res.values()), key=lambda x: x['distance'])
+    # is_res = is_res[:max_results]
+
+    # return [], is_res
+
+    is_res = []
+    return m_res, is_res
 
 
 if __name__ == "__main__":
