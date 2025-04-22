@@ -145,7 +145,6 @@ def run(name):
         dataset_name = default_ds_name
     else:
         dataset_name = name
-    i = 0
     try:
         src_ds = init(name)
     except Exception as e:
@@ -156,28 +155,34 @@ def run(name):
     except Exception as e:
         print(f"❌ Unable to init dst-dataset: {dataset_name}. Error: {e}")
         sys.exit(1)
-    meta_items = get_unprocessed(name)
-    while len(meta_items) > 0:
+    i, last_i = 0, -1
+    while i > last_i:
+        last_i = i
+        last_item = 0
         should_break = False
-        for meta in meta_items:
-            i += 1
-            last_item = meta['id']
-            meta_snapshot = src_ds.snapshot(meta)
-            print(f"Processing row {i} - {last_item}: {meta_snapshot}")
-            # print(meta)
-            buffer.append({
-                'id': meta['id'],
-                'hash': sha256(meta['origin_storage_id']),
-                'origin_storage_id': meta['origin_storage_id'],
-            })
-            trigger()
-            if i >= limit > 0:
-                should_break = True
+        meta_items = get_unprocessed(name)
+        while len(meta_items) > 0:
+            for meta in meta_items:
+                i += 1
+                last_item = meta['id']
+                meta_snapshot = src_ds.snapshot(meta)
+                print(f"Processing row {i} - {last_item}: {meta_snapshot}")
+                # print(meta)
+                buffer.append({
+                    'id': meta['id'],
+                    'hash': sha256(meta['origin_storage_id']),
+                    'origin_storage_id': meta['origin_storage_id'],
+                })
+                trigger()
+                if i >= limit > 0:
+                    should_break = True
+                    break
+            if should_break:
                 break
+            meta_items = get_unprocessed(name)
+        trigger(force=True)
         if should_break:
             break
-        meta_items = get_unprocessed(name)
-    trigger(force=True)
     print('All Done!')
 
 
