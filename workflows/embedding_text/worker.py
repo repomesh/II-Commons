@@ -18,7 +18,10 @@ source_db, default_ds_name = None, 'text_0000002_en'
 
 
 def get_unprocessed(name):
-    worker_count, worker_order = heartbeat(name)
+    global last_item
+    worker_count, worker_order, reset = heartbeat(name)
+    if reset:
+        last_item = 0
     # worker_count, worker_order = 1, 0
     # start_time = time.time()
     resp = src_ds.query(

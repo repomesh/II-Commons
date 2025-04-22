@@ -5,6 +5,7 @@ import uuid
 TABLE_NAME = 'workers'
 LIVE_TIME = 60 * 3
 _uuid = None
+_worker_count = 0
 
 
 def init_table():
@@ -23,7 +24,7 @@ def init_table():
 
 
 def heartbeat(workflow):
-    global _uuid
+    global _uuid, _worker_count
     if _uuid is None:
         init_table()
         _uuid = str(uuid.uuid4())
@@ -53,8 +54,13 @@ def heartbeat(workflow):
         raise Exception("Worker not found")
     # return
     count = len(workers)
-    print(f'❤️ [{workflow}:{_uuid}] Heartbeat: {order} / {count}')
-    return count, order
+    reset = True if count != _worker_count else False
+    _worker_count = count
+    print(
+        f'❤️ [{workflow}:{_uuid}] Heartbeat: '
+        + f'{order} / {count} {"(reset)" if reset else ""}'
+    )
+    return count, order, reset
 
 
 if __name__ == '__main__':

@@ -19,7 +19,10 @@ last_item, limit, buffer = 0, 0, []
 
 
 def get_unprocessed(name):
-    worker_count, worker_order = heartbeat(name)
+    global last_item
+    worker_count, worker_order, reset = heartbeat(name)
+    if reset:
+        last_item = 0
     # worker_count, worker_order = 1, 0
     return src_ds.get_unprocessed(
         limit=BATCH_SIZE, offset=last_item,
