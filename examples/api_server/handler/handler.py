@@ -13,12 +13,8 @@ IMAGE_TABLE_NAME = "ii_alpha"
 pool = None
 MAX_DISTANCE = 2
 MAX_SCORE = 50
-TEXT_EMBEDDING_MODEL = 'Snowflake/snowflake-arctic-embed-m-v2.0'
-RERANK_MODEL = 'jinaai/jina-reranker-m0'
 SELF_HOST_MODEL_SERVER_URL_BASE = os.getenv("MODEL_SERVER_URL_BASE", "http://localhost:8001")
-USE_JINA_RERANK_API = os.getenv("USE_JINA_RERANK_API", "false").lower() == "true"
-if USE_JINA_RERANK_API:
-    print("> Using Jina Rerank API...")
+
 class QueryConfiguration(BaseModel):
     refine_query: bool = False
     rerank: bool = True
@@ -46,7 +42,6 @@ async def init_db():
     print(f"> Connecting to PostgreSQL at {POSTGRES_HOST}:{POSTGRES_PORT}...")
     print(f"> Using database: {POSTGRES_DB}")
     print(f"> Using table: {TABLE_NAME}")
-    print(f"> Using text embedding model: {TEXT_EMBEDDING_MODEL}")
     print(f"> Using max distance: {MAX_DISTANCE}")
     print(f"> Using max score: {MAX_SCORE}")
     pool = AsyncConnectionPool(
@@ -63,6 +58,8 @@ async def clean_db():
 
 async def init():
     await init_db()
+    if os.environ.get('NLTK_PROXY'):
+        nltk.set_proxy(os.environ['NLTK_PROXY'])
     nltk.download('punkt_tab')
 
 async def clean():
@@ -78,6 +75,19 @@ def fusion_sort_key(result):
     fusion_score = vector_weight * normalized_distance + bm25_weight * normalized_score
     return fusion_score
 
+def refine_query(query: str) -> dict:
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "query": query
+    }
+    response = requests.post(f"{SELF_HOST_MODEL_SERVER_URL_BASE}/refine_query", json=data, headers=headers)
+    if response.status_code == 200:
+        # print("Embeddings:", response.json())
+        return response.json()
+    else:
+        print("Error:", response.status_code, response.text)
+        return []
+    
 def text_encode(input: list) -> list:
     headers = {"Content-Type": "application/json"}
     data = {
@@ -107,8 +117,6 @@ def text_encode_sig(input: list) -> list:
     else:
         print("Error:", response.status_code, response.text)
         return []
-    
-
 
 async def query_db(cur, sql=None, values=None, **kwargs):
     cursor = await cur.execute(sql, values, **kwargs)
@@ -125,54 +133,19 @@ async def execute_query(sql, values=None):
         async with conn.cursor() as cur:
             return await query_db(cur, sql, values)
         
-async def refine_query(topic):
-    return {"sentences": [topic], "keywords": [topic]}
-
 def rerank(query, documents, max_results):
-    if USE_JINA_RERANK_API:
-        JINA_API_KEY = os.getenv("JINA_API_KEY")
-        if not JINA_API_KEY:
-            raise EnvironmentError("JINA_API_KEY environment variable is not set.")
-        url = 'https://api.jina.ai/v1/rerank'
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "query": query,
+        "documents": documents
+    }
+    response = requests.post(f"{SELF_HOST_MODEL_SERVER_URL_BASE}/rerank", json=data, headers=headers)
 
-        headers = {
-            'Content-Type': 'application/json',
-            'Authorization': f"Bearer {JINA_API_KEY}"
-        }
-
-        docs = [{"text": doc} for doc in documents]
-        data = {
-            "model": "jina-reranker-m0",
-            "query": "small language model data extraction",
-            "top_n": f"{max_results}",
-            "documents": docs
-        }
-        response = requests.post(url, json=data, headers=headers)
-        if response.status_code == 200:
-            resp = response.json()
-            scores = [0] * len(documents)
-            for item in resp['results']:
-                index = item["index"]
-                score = item["relevance_score"]
-                if index < len(documents):
-                    scores[index] = score
-            return scores
-        else:
-            print("Error:", response.status_code, response.text)
-            return [0] * len(documents)
+    if response.status_code == 200:
+        return response.json()
     else:
-        headers = {"Content-Type": "application/json"}
-        data = {
-            "query": query,
-            "documents": documents
-        }
-        response = requests.post(f"{SELF_HOST_MODEL_SERVER_URL_BASE}/rerank", json=data, headers=headers)
-
-        if response.status_code == 200:
-            return response.json()
-        else:
-            print("Error:", response.status_code, response.text)
-            return [0] * len(documents)
+        print("Error:", response.status_code, response.text)
+        return [0] * len(documents)
 
 def chunk_by_sentence(document):
     return nltk.sent_tokenize(document)
@@ -196,9 +169,9 @@ async def query(topic, max_results=100, config=QueryConfiguration()):
 
     tp_resp = {"sentences": [topic], "keywords": [topic]}
 
-    if refine_query:
+    if config.refine_query:
         print("> Refining query...")
-        tp_resp = await refine_query(topic)
+        tp_resp = refine_query(topic)
         if not tp_resp:
             print("Refined query is empty, using original topic.")
             tp_resp = {"sentences": [topic], "keywords": [topic]}
@@ -393,6 +366,8 @@ async def query(topic, max_results=100, config=QueryConfiguration()):
     # return [], is_res
 
     is_res = []
+    for row in m_res:
+        row["score"] = row.get("rank_score", 0)
     return m_res, is_res
 
 

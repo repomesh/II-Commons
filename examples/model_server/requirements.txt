@@ -6,3 +6,4 @@ xformers
 torch
 torchvision
 fastapi
+google-genai
