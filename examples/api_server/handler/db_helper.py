@@ -1,4 +1,9 @@
-SUB_QUERY_COUNT = 100
+def escape_bm25_query_simple(q: str) -> str:
+    if not isinstance(q, str):
+        return q
+    return q.replace("'", r"\'")
+
+SUB_QUERY_COUNT = 300
 
 def tempalte_vector_search_ts_ms_marco(table_name: str, e: any) -> tuple:
     sql = f"""SELECT id, item_id, answers, query, passage_text, is_selected, url, query_id, query_type, well_formed_answers, passage_id,
@@ -9,6 +14,7 @@ def tempalte_vector_search_ts_ms_marco(table_name: str, e: any) -> tuple:
     return sql, values
         
 def tempalte_bm25_search_ts_ms_marco(table_name: str, b: any) -> tuple:
+    b = escape_bm25_query_simple(b)
     sql = f"""SELECT id, item_id, answers, query, passage_text, is_selected, url, query_id, query_type, passage_id,
                     well_formed_answers, paradedb.score(passage_text) as score
                     FROM {table_name} WHERE passage_text @@@ %s
@@ -27,6 +33,7 @@ def tempalte_vector_search_ts_text_0000002_en(table_name: str, e: any) -> tuple:
     return sql, values
  
 def tempalte_bm25_search_ts_text_0000002_en(table_name: str, b: any) -> tuple:
+    b = escape_bm25_query_simple(b)
     sql = f"""SELECT id, title, url, snapshot, source_db, source_id, chunk_index, chunk_text, paradedb.score(id) as score
             FROM {table_name} WHERE title @@@ %s or chunk_text @@@ %s
             ORDER BY score DESC OFFSET %s LIMIT %s"""

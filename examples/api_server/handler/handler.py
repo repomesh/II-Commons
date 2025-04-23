@@ -14,6 +14,8 @@ pool = None
 MAX_DISTANCE = 2
 MAX_SCORE = 50
 SELF_HOST_MODEL_SERVER_URL_BASE = os.getenv("MODEL_SERVER_URL_BASE", "http://localhost:8001")
+MAX_RERANK_INPUT_LEN = 200
+MAX_SUBQUERY_COUNT = 3
 
 class QueryConfiguration(BaseModel):
     refine_query: bool = False
@@ -119,14 +121,23 @@ def text_encode_sig(input: list) -> list:
         return []
 
 async def query_db(cur, sql=None, values=None, **kwargs):
-    cursor = await cur.execute(sql, values, **kwargs)
     try:
+        cursor = await cur.execute(sql, values, **kwargs)
         columns = [desc[0] for desc in cursor.description]
         results = await cursor.fetchall()
         return [dict(zip(columns, row)) for row in results]
     except Exception as e:
-        pass
-    return cursor
+        print(f"Error executing or fetching from query: {e}")
+        print(f"SQL: {sql}")
+        print(f"Values: {values}")
+        # Re-raise the exception so it can be caught further up if needed
+        raise e
+    # This part is likely unreachable now if an exception occurs, 
+    # but kept for structural integrity if fetchall() returns None or similar non-exception cases.
+    # However, psycopg usually raises an exception on errors.
+    # Consider removing if cursor is not meant to be returned directly.
+    # For now, let's keep it but acknowledge the raise above.
+    return cursor # This might need adjustment based on how errors should propagate.
 
 async def execute_query(sql, values=None):
     async with pool.connection() as conn:
@@ -175,6 +186,8 @@ async def query(topic, max_results=100, config=QueryConfiguration()):
         if not tp_resp:
             print("Refined query is empty, using original topic.")
             tp_resp = {"sentences": [topic], "keywords": [topic]}
+        tp_resp["sentences"] = tp_resp["sentences"][:MAX_SUBQUERY_COUNT]
+        tp_resp["keywords"] = tp_resp["keywords"][:MAX_SUBQUERY_COUNT]
 
     # Embedding phrases
     print("> Embedding phrases...")
@@ -301,9 +314,11 @@ async def query(topic, max_results=100, config=QueryConfiguration()):
         row['text'] = '...'.join([c['chunk_text'] for c in row['chunks']])
         del row['chunks']
     m_res = sorted(m_res, key=fusion_sort_key, reverse=True)
+    m_res = m_res[:max(MAX_RERANK_INPUT_LEN, max_results*10)]
 
     if config.rerank:
         print("> Reranking...")
+        print("> Input size: ", len(m_res))
         # Rerank the results based on the fusion score
         scores = rerank(topic, [row['text'][:4096] for row in m_res], max_results)
         for i in range(len(m_res)):
