@@ -14,12 +14,13 @@ import time
 BATCH_SIZE = 100
 last_item, limit, buffer = 0, 0, []
 src_ds, dst_ds = None, None
-source_db, default_ds_name = None, 'text_0000002_en'
+source_db, target_db = None, None
 
 
 def get_unprocessed(name):
     global last_item
     worker_count, worker_order, reset = heartbeat(name)
+    # worker_count, worker_order, reset = 1, 0, False
     if reset:
         last_item = 0
     # worker_count, worker_order = 1, 0
@@ -67,7 +68,7 @@ def embedding(args) -> dict:
             download_file(s3_address, filename)
             print(f'Downloaded {s3_address} to: {filename}')
             json = read_json(filename)
-            if len(json['text']) == 0:
+            if len(json['text'].strip()) == 0:
                 src_ds.update_by_id(meta['id'], {'ignored': True})
                 print(f'✅ ({snapshot}) Ignored: empty text')
                 continue
@@ -141,19 +142,16 @@ def embedding(args) -> dict:
 def run(name):
     global buffer, last_item, src_ds, dst_ds, source_db
     source_db = name
-    if name == 'wikipedia_en':
-        dataset_name = default_ds_name
-    else:
-        dataset_name = name
+    target_db = f'{name}_embed'
     try:
         src_ds = init(name)
     except Exception as e:
         print(f"❌ Unable to init src-dataset: {name}. Error: {e}")
         sys.exit(1)
     try:
-        dst_ds = init(dataset_name)
+        dst_ds = init(target_db)
     except Exception as e:
-        print(f"❌ Unable to init dst-dataset: {dataset_name}. Error: {e}")
+        print(f"❌ Unable to init dst-dataset: {target_db}. Error: {e}")
         sys.exit(1)
     i, last_i = 0, -1
     while i > last_i:

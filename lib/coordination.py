@@ -1,50 +1,34 @@
 from time import time
-from lib.psql import query
+from lib.psql import init
 import uuid
 
-TABLE_NAME = 'workers'
 LIVE_TIME = 60 * 3
-_uuid = None
-_worker_count = 0
-
-
-def init_table():
-    list_sql = [
-        f"""CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
-            id BIGSERIAL PRIMARY KEY,
-            uuid VARCHAR NOT NULL,
-            workflow VARCHAR NOT NULL,
-            last_heartbeat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        )""",
-        f'CREATE UNIQUE INDEX IF NOT EXISTS {TABLE_NAME}_uuid_index ON {TABLE_NAME} (uuid)',
-        f'CREATE INDEX IF NOT EXISTS {TABLE_NAME}_last_heartbeat_index ON {TABLE_NAME} (last_heartbeat)',
-    ]
-    for sql in list_sql:
-        query(sql)
+dataset, ds = 'workers', None
+_uuid, _worker_count = None, 0
 
 
 def heartbeat(workflow):
-    global _uuid, _worker_count
-    if _uuid is None:
-        init_table()
+    global ds, _uuid, _worker_count
+    if ds is None:
+        ds = init(dataset)
         _uuid = str(uuid.uuid4())
     if workflow is None:
         raise Exception("Workflow is required")
     workflow = str(workflow).upper()
     now = time()
     # delete expired workers
-    query(
-        f"DELETE FROM {TABLE_NAME} WHERE last_heartbeat < to_timestamp(%s)",
+    ds.query(
+        f"DELETE FROM {ds.get_table_name()} WHERE last_heartbeat < to_timestamp(%s)",
         (now - LIVE_TIME,)
     )
     # register new worker
-    query(
-        f"INSERT INTO {TABLE_NAME} (uuid, workflow, last_heartbeat) VALUES (%s, %s, to_timestamp(%s)) ON CONFLICT (uuid) DO UPDATE SET last_heartbeat = to_timestamp(%s)",
+    ds.query(
+        f"INSERT INTO {ds.get_table_name()} (uuid, workflow, last_heartbeat) VALUES (%s, %s, to_timestamp(%s)) ON CONFLICT (uuid) DO UPDATE SET last_heartbeat = to_timestamp(%s)",
         (_uuid, workflow, now, now)
     )
     # get all workers
-    workers = query(
-        f"SELECT * FROM {TABLE_NAME} WHERE workflow = %s ORDER BY id ASC",
+    workers = ds.query(
+        f"SELECT * FROM {ds.get_table_name()} WHERE workflow = %s ORDER BY id ASC",
         (workflow,)
     )
     # get current worker

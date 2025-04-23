@@ -88,12 +88,18 @@ def vacuum_table(table_name, force=False):
 
 def get_table_name(dataset):
     check_dataset(dataset)
-    head, tail = 'ds', ''
+    head, tail = '', ''
     match dataset:
         case 'alpha':
             head = 'ii'
-        case 'text_0000001_en' | 'text_0000002_en' | 'wikipedia_en' | 'arxiv' | 'ms_marco':
+        case 'pd12m':
+            head = 'is'
+        case 'wikipedia_en' | 'wikipedia_en_embed' | 'arxiv' | 'ms_marco':
             head = 'ts'
+        case 'workers':
+            head = 'sc'
+        case _:
+            raise ValueError(f'Unsupported dataset: {dataset}')
     table_name = f'{head}_{dataset}' + (f'_{tail}' if tail else '')
     # todo: disabled for now by @Leask for speed up
     # vacuum_table(table_name)
@@ -129,31 +135,32 @@ def init(dataset):
                 )""",
                 f'CREATE INDEX IF NOT EXISTS {table_name}_ignored_index ON {table_name} (ignored)',
             ]
-            init('text_0000001_en')
-            init('text_0000002_en')
-        case 'text_0000001_en' | 'text_0000002_en':
-            vector_dim = 768
-            type = 'halfvec'
+            init('wikipedia_en_embed')
+        case 'wikipedia_en_embed':
             list_sql.extend([
                 f"""CREATE TABLE IF NOT EXISTS {table_name} (
                     id BIGSERIAL PRIMARY KEY,
                     title VARCHAR NOT NULL,
                     url VARCHAR NOT NULL,
                     snapshot VARCHAR NOT NULL,
+                    source_id BIGINT NOT NULL,
                     chunk_index BIGINT NOT NULL,
                     chunk_text VARCHAR NOT NULL,
-                    source_db VARCHAR NOT NULL,
-                    source_id BIGINT NOT NULL,
-                    vector {type}({vector_dim}) DEFAULT NULL,
+                    vector halfvec(768) DEFAULT NULL,
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )""",
                 f'CREATE INDEX IF NOT EXISTS {table_name}_source_db_index ON {table_name} (source_db)',
                 f'CREATE INDEX IF NOT EXISTS {table_name}_source_id_index ON {table_name} (source_id)',
                 f'CREATE INDEX IF NOT EXISTS {table_name}_chunk_index_index ON {table_name} (chunk_index)',
-                f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_source_index ON {table_name} (source_db, source_id, chunk_index)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING vchordrq (vector halfvec_cosine_ops)',
-                f"CREATE INDEX IF NOT EXISTS {table_name}_chunk_text ON {table_name} USING bm25 (id, title, chunk_text) WITH (key_field='id')",
+                f"CREATE INDEX IF NOT EXISTS {table_name}_chunk_text_index ON {table_name} USING bm25 (id, title, chunk_text) WITH (key_field='id')",
+                f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_source_index ON {table_name} (source_id, chunk_index)',
+                f"""CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING vchordrq (vector halfvec_cosine_ops) WITH (options = $$
+                    [build.internal]
+                    lists = [20000]
+                    build_threads = 6
+                    spherical_centroids = true
+                $$)""",
             ])
         case 'ms_marco':
             list_sql = [
@@ -214,7 +221,7 @@ def init(dataset):
                 f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_paper_id_index ON {table_name} (paper_id)',
                 f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_url_index ON {table_name} (url)',
             ]
-        case 'alpha':
+        case 'alpha' | 'pd12m':
             list_sql = [
                 f"""CREATE TABLE IF NOT EXISTS {table_name} (
                     id BIGSERIAL PRIMARY KEY,
@@ -248,54 +255,71 @@ def init(dataset):
                 f'CREATE INDEX IF NOT EXISTS {table_name}_source_index ON {table_name} USING gin(source)',
                 f'CREATE INDEX IF NOT EXISTS {table_name}_created_at_index ON {table_name} (created_at)',
                 f'CREATE INDEX IF NOT EXISTS {table_name}_updated_at_index ON {table_name} (updated_at)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING vchordrq (vector halfvec_cosine_ops)',
+                f"""CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING vchordrq (vector halfvec_cosine_ops)  WITH (options = $$
+                    [build.internal]
+                    lists = [14000]
+                    build_threads = 6
+                    spherical_centroids = true
+                $$)""",
                 f"CREATE INDEX IF NOT EXISTS {table_name}_caption_index ON {table_name} (caption) WHERE caption = ''",
                 f"CREATE INDEX IF NOT EXISTS {table_name}_caption_long_index ON {table_name} (caption_long) WHERE caption_long = ''",
                 f'CREATE INDEX IF NOT EXISTS {table_name}_vector_null_index ON {table_name} (vector) WHERE vector IS NULL',
             ]
-        case _:
+        case 'workers':
             list_sql = [
                 f"""CREATE TABLE IF NOT EXISTS {table_name} (
                     id BIGSERIAL PRIMARY KEY,
-                    url VARCHAR NOT NULL,
-                    hash VARCHAR(1024) NOT NULL,
-                    caption VARCHAR NOT NULL DEFAULT '',
-                    caption_long VARCHAR NOT NULL DEFAULT '',
-                    origin_hash VARCHAR(1024) NOT NULL DEFAULT '',
-                    origin_width BIGINT NOT NULL DEFAULT 0,
-                    origin_height BIGINT NOT NULL DEFAULT 0,
-                    origin_storage_id VARCHAR(1024) NOT NULL DEFAULT '',
-                    processed_storage_id VARCHAR(1024) NOT NULL DEFAULT '',
-                    processed_width BIGINT NOT NULL DEFAULT 0,
-                    processed_height BIGINT NOT NULL DEFAULT 0,
-                    aspect_ratio DOUBLE PRECISION NOT NULL DEFAULT 0,
-                    exif JSONB NOT NULL DEFAULT '{EMPTY_OBJECT}',
-                    meta JSONB NOT NULL DEFAULT '{EMPTY_OBJECT}',
-                    vector VECTOR(1152) DEFAULT NULL,
-                    similarity FLOAT NOT NULL DEFAULT 0,
-                    similar_to INT NOT NULL DEFAULT 0,
-                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    uuid VARCHAR NOT NULL,
+                    workflow VARCHAR NOT NULL,
+                    last_heartbeat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )""",
-                f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_url_index ON {table_name} (url)',
-                f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_hash_index ON {table_name} (hash)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_origin_hash_index ON {table_name} (origin_hash)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_origin_width_index ON {table_name} (origin_width)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_origin_height_index ON {table_name} (origin_height)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_origin_storage_id_index ON {table_name} (origin_storage_id)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_processed_storage_id_index ON {table_name} (processed_storage_id)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_processed_width_index ON {table_name} (processed_width)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_processed_height_index ON {table_name} (processed_height)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_aspect_ratio_index ON {table_name} (aspect_ratio)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_exif_index ON {table_name} USING gin(exif)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_meta_index ON {table_name} USING gin(meta)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING hnsw(vector vector_cosine_ops)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_similarity_index ON {table_name} (similarity)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_similar_to_index ON {table_name} (similar_to)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_created_at_index ON {table_name} (created_at)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_updated_at_index ON {table_name} (updated_at)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_vector_null_index ON {table_name} (vector) WHERE vector IS NULL',
+                f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_uuid_index ON {table_name} (uuid)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_last_heartbeat_index ON {table_name} (last_heartbeat)',
             ]
+        case _:
+            raise ValueError(f'Unsupported dataset: {dataset}')
+            # list_sql = [
+            #     f"""CREATE TABLE IF NOT EXISTS {table_name} (
+            #         id BIGSERIAL PRIMARY KEY,
+            #         url VARCHAR NOT NULL,
+            #         hash VARCHAR(1024) NOT NULL,
+            #         caption VARCHAR NOT NULL DEFAULT '',
+            #         caption_long VARCHAR NOT NULL DEFAULT '',
+            #         origin_hash VARCHAR(1024) NOT NULL DEFAULT '',
+            #         origin_width BIGINT NOT NULL DEFAULT 0,
+            #         origin_height BIGINT NOT NULL DEFAULT 0,
+            #         origin_storage_id VARCHAR(1024) NOT NULL DEFAULT '',
+            #         processed_storage_id VARCHAR(1024) NOT NULL DEFAULT '',
+            #         processed_width BIGINT NOT NULL DEFAULT 0,
+            #         processed_height BIGINT NOT NULL DEFAULT 0,
+            #         aspect_ratio DOUBLE PRECISION NOT NULL DEFAULT 0,
+            #         exif JSONB NOT NULL DEFAULT '{EMPTY_OBJECT}',
+            #         meta JSONB NOT NULL DEFAULT '{EMPTY_OBJECT}',
+            #         vector VECTOR(1152) DEFAULT NULL,
+            #         similarity FLOAT NOT NULL DEFAULT 0,
+            #         similar_to INT NOT NULL DEFAULT 0,
+            #         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            #         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            #     )""",
+            #     f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_url_index ON {table_name} (url)',
+            #     f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_hash_index ON {table_name} (hash)',
+            #     f'CREATE INDEX IF NOT EXISTS {table_name}_origin_hash_index ON {table_name} (origin_hash)',
+            #     f'CREATE INDEX IF NOT EXISTS {table_name}_origin_width_index ON {table_name} (origin_width)',
+            #     f'CREATE INDEX IF NOT EXISTS {table_name}_origin_height_index ON {table_name} (origin_height)',
+            #     f'CREATE INDEX IF NOT EXISTS {table_name}_origin_storage_id_index ON {table_name} (origin_storage_id)',
+            #     f'CREATE INDEX IF NOT EXISTS {table_name}_processed_storage_id_index ON {table_name} (processed_storage_id)',
+            #     f'CREATE INDEX IF NOT EXISTS {table_name}_processed_width_index ON {table_name} (processed_width)',
+            #     f'CREATE INDEX IF NOT EXISTS {table_name}_processed_height_index ON {table_name} (processed_height)',
+            #     f'CREATE INDEX IF NOT EXISTS {table_name}_aspect_ratio_index ON {table_name} (aspect_ratio)',
+            #     f'CREATE INDEX IF NOT EXISTS {table_name}_exif_index ON {table_name} USING gin(exif)',
+            #     f'CREATE INDEX IF NOT EXISTS {table_name}_meta_index ON {table_name} USING gin(meta)',
+            #     f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING hnsw(vector vector_cosine_ops)',
+            #     f'CREATE INDEX IF NOT EXISTS {table_name}_similarity_index ON {table_name} (similarity)',
+            #     f'CREATE INDEX IF NOT EXISTS {table_name}_similar_to_index ON {table_name} (similar_to)',
+            #     f'CREATE INDEX IF NOT EXISTS {table_name}_created_at_index ON {table_name} (created_at)',
+            #     f'CREATE INDEX IF NOT EXISTS {table_name}_updated_at_index ON {table_name} (updated_at)',
+            #     f'CREATE INDEX IF NOT EXISTS {table_name}_vector_null_index ON {table_name} (vector) WHERE vector IS NULL',
+            # ]
     for sql in list_sql:
         res = execute(sql)
         result.append(res)
