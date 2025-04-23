@@ -2,7 +2,7 @@ from fastmcp import FastMCP
 import requests
 import os
 
-mcp = FastMCP("Common Ground MCP Server", dependencies=["requests"], request_timeout=300)
+mcp = FastMCP("Common Ground MCP Server", dependencies=["requests", "fastmcp"], request_timeout=300)
 
 API_SERVER_BASE_URL = os.environ.get("API_SERVER_BASE_URL", "http://localhost:8080")
 
