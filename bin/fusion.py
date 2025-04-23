@@ -69,6 +69,7 @@ def query(topic):
     print("> BM25 search...")
     b_res = []
     for b in tp_resp['keywords']:
+        b = b.replace("'", r"\'")
         b_res.append(ds.query(
             f"""SELECT id, title, url, snapshot, source_db, source_id, chunk_index, chunk_text, paradedb.score(id) as score
             FROM {ds.get_table_name()} WHERE title @@@ %s or chunk_text @@@ %s

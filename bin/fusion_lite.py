@@ -50,6 +50,7 @@ def query(topic):
     print("> BM25 search...")
     b_res = []
     for b in tp_resp['keywords']:
+        b = b.replace("'", r"\'")
         b_res.append(ds.query(
             f"""SELECT id, item_id, answers, query, passage_text, is_selected, url, query_id, query_type, passage_id,
             well_formed_answers, paradedb.score(passage_text) as score
