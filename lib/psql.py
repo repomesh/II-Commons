@@ -150,7 +150,6 @@ def init(dataset):
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )""",
-                f'CREATE INDEX IF NOT EXISTS {table_name}_source_db_index ON {table_name} (source_db)',
                 f'CREATE INDEX IF NOT EXISTS {table_name}_source_id_index ON {table_name} (source_id)',
                 f'CREATE INDEX IF NOT EXISTS {table_name}_chunk_index_index ON {table_name} (chunk_index)',
                 f"CREATE INDEX IF NOT EXISTS {table_name}_chunk_text_index ON {table_name} USING bm25 (id, title, chunk_text) WITH (key_field='id')",

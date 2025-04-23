@@ -14,8 +14,6 @@ import time
 BATCH_SIZE = 100
 last_item, limit, buffer = 0, 0, []
 src_ds, dst_ds = None, None
-source_db, target_db = None, None
-
 
 def get_unprocessed(name):
     global last_item
@@ -99,7 +97,6 @@ def embedding(args) -> dict:
                     'snapshot': txt['origin_storage_id'],
                     'chunk_index': j,
                     'chunk_text': chk['chunk'],
-                    'source_db': source_db,
                     'source_id': txt['id'],
                     'vector': chk['embedding'],
                 })
@@ -140,8 +137,7 @@ def embedding(args) -> dict:
 
 
 def run(name):
-    global buffer, last_item, src_ds, dst_ds, source_db
-    source_db = name
+    global buffer, last_item, src_ds, dst_ds
     target_db = f'{name}_embed'
     try:
         src_ds = init(name)
