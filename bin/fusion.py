@@ -89,22 +89,22 @@ def query(topic):
                    key=lambda x: x['score'], reverse=True)
 
     # Image search / Testing
-    print("> Image search...")
-    ie_resp = encode_text_sig(tp_resp['keywords'] + tp_resp['sentences'])
-    is_res = []
-    import time
-    for ir in ie_resp:
-        start = time.time()
-        is_res.append(di.query(
-            f"""SELECT id, url, caption, processed_storage_id, aspect_ratio, exif, meta, source, vector,
-            (vector <=> %s) as distance,
-            ((2 - (vector <=> %s)) / 2) as similarity
-            FROM {di.get_table_name()} ORDER BY (vector <=> %s) ASC OFFSET %s LIMIT %s""",
-            (ir, ir, ir, 0, SUB_QUERY_COUNT)
-        ))
-        end = time.time()
-        print(f"Image search time taken: {end - start} seconds")
-        # print(is_res[0])
+    # print("> Image search...")
+    # ie_resp = encode_text_sig(tp_resp['keywords'] + tp_resp['sentences'])
+    # is_res = []
+    # import time
+    # for ir in ie_resp:
+    #     start = time.time()
+    #     is_res.append(di.query(
+    #         f"""SELECT id, url, caption, processed_storage_id, aspect_ratio, exif, meta, source, vector,
+    #         (vector <=> %s) as distance,
+    #         ((2 - (vector <=> %s)) / 2) as similarity
+    #         FROM {di.get_table_name()} ORDER BY (vector <=> %s) ASC OFFSET %s LIMIT %s""",
+    #         (ir, ir, ir, 0, SUB_QUERY_COUNT)
+    #     ))
+    #     end = time.time()
+    #     print(f"Image search time taken: {end - start} seconds")
+    #     # print(is_res[0])
 
     # Unique Image search results
     # unique_is_res = {}
