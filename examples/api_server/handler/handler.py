@@ -1,7 +1,9 @@
 from psycopg_pool import AsyncConnectionPool
-import requests
+import aiohttp
 import os
 import asyncio
+import time
+import functools
 from pydantic import BaseModel
 from . import db_helper
 import nltk
@@ -77,48 +79,45 @@ def fusion_sort_key(result):
     fusion_score = vector_weight * normalized_distance + bm25_weight * normalized_score
     return fusion_score
 
-def refine_query(query: str) -> dict:
+async def refine_query(query: str) -> dict:
     headers = {"Content-Type": "application/json"}
     data = {
         "query": query
     }
-    response = requests.post(f"{SELF_HOST_MODEL_SERVER_URL_BASE}/refine_query", json=data, headers=headers)
-    if response.status_code == 200:
-        # print("Embeddings:", response.json())
-        return response.json()
-    else:
-        print("Error:", response.status_code, response.text)
-        return []
-    
-def text_encode(input: list) -> list:
+    async with aiohttp.ClientSession() as session:
+        async with session.post(f"{SELF_HOST_MODEL_SERVER_URL_BASE}/refine_query", json=data, headers=headers) as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                print("Error:", response.status, await response.text())
+                return {} # Return empty dict on error
+
+async def text_encode(input: list) -> list:
     headers = {"Content-Type": "application/json"}
     data = {
         "queries": input,
         "prompt_name": "query"
     }
-    response = requests.post(f"{SELF_HOST_MODEL_SERVER_URL_BASE}/embedding", json=data, headers=headers)
+    async with aiohttp.ClientSession() as session:
+        async with session.post(f"{SELF_HOST_MODEL_SERVER_URL_BASE}/embedding", json=data, headers=headers) as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                print("Error:", response.status, await response.text())
+                return []
 
-
-    if response.status_code == 200:
-        # print("Embeddings:", response.json())
-        return response.json()
-    else:
-        print("Error:", response.status_code, response.text)
-        return []
-    
-def text_encode_sig(input: list) -> list:
+async def text_encode_sig(input: list) -> list:
     headers = {"Content-Type": "application/json"}
     data = {
         "queries": input,
     }
-    response = requests.post(f"{SELF_HOST_MODEL_SERVER_URL_BASE}/siglip2/encode_text", json=data, headers=headers)
-
-    if response.status_code == 200:
-        # print("Embeddings:", response.json())
-        return response.json()
-    else:
-        print("Error:", response.status_code, response.text)
-        return []
+    async with aiohttp.ClientSession() as session:
+        async with session.post(f"{SELF_HOST_MODEL_SERVER_URL_BASE}/siglip2/encode_text", json=data, headers=headers) as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                print("Error:", response.status, await response.text())
+                return []
 
 async def query_db(cur, sql=None, values=None, **kwargs):
     try:
@@ -139,28 +138,117 @@ async def query_db(cur, sql=None, values=None, **kwargs):
     # For now, let's keep it but acknowledge the raise above.
     return cursor # This might need adjustment based on how errors should propagate.
 
+
+def timeit(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.perf_counter()
+        # Check if the function is async
+        if asyncio.iscoroutinefunction(func):
+            # Create an async wrapper for async functions
+            async def async_wrapper():
+                result = await func(*args, **kwargs)
+                end_time = time.perf_counter()
+                print(f"Function {func.__name__!r} executed in {end_time - start_time:.4f}s")
+                return result
+            # Return the coroutine object created by async_wrapper
+            return async_wrapper()
+        else:
+            # Execute sync function directly
+            result = func(*args, **kwargs)
+            end_time = time.perf_counter()
+            print(f"Function {func.__name__!r} executed in {end_time - start_time:.4f}s")
+            return result
+    return wrapper
+
+@timeit
+async def _perform_embedding_search(tp_resp, v_search_tmpl_builder, table_name):
+    """Performs embedding search asynchronously."""
+    print("> Embedding vector search...")
+    eb_resp = await text_encode(tp_resp["sentences"])
+    tasks = []
+    if not eb_resp: # Handle empty response from text_encode
+        print("Warning: Embedding response was empty.")
+        return []
+    for e in eb_resp:
+        sql, values = v_search_tmpl_builder(table_name, e)
+        tasks.append(
+            asyncio.create_task(
+                execute_query(
+                    sql,
+                    values
+                )
+            )
+        )
+    e_res = await asyncio.gather(*tasks)
+
+    # Unique embedding phrases search results
+    unique_e_res = {}
+    for result_set in e_res:
+        for row in result_set:
+            result_id = row['id']
+            result_distance = row['distance']
+            if result_id not in unique_e_res or result_distance < unique_e_res[result_id]['distance']:
+                unique_e_res[result_id] = row
+    return sorted(list(unique_e_res.values()), key=lambda x: x['distance'])
+
+@timeit
+async def _perform_bm25_search(tp_resp, bm25_search_tmpl_builder, table_name):
+    """Performs BM25 search asynchronously."""
+    print("> BM25 search...")
+    bm25_tasks = []
+    for b in tp_resp['keywords']:
+        sql, values = bm25_search_tmpl_builder(table_name, b)
+        bm25_tasks.append(
+            asyncio.create_task(
+                execute_query(
+                    sql,
+                    values
+                )
+            )
+        )
+    b_res = await asyncio.gather(*bm25_tasks)
+
+    # Unique BM25 search results
+    unique_b_res = {}
+    for result_set in b_res:
+        for row in result_set:
+            result_id = row['id']
+            result_score = row['score']
+            if result_id not in unique_b_res or result_score > unique_b_res[result_id]['score']:
+                unique_b_res[result_id] = row
+    return sorted(
+        list(unique_b_res.values()),
+        key=lambda x: x['score'],
+        reverse=True
+    )
+
+
 async def execute_query(sql, values=None):
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
             return await query_db(cur, sql, values)
-        
-def rerank(query, documents, max_results):
+
+@timeit
+async def rerank(query, documents, max_results):
     headers = {"Content-Type": "application/json"}
     data = {
         "query": query,
         "documents": documents
     }
-    response = requests.post(f"{SELF_HOST_MODEL_SERVER_URL_BASE}/rerank", json=data, headers=headers)
-
-    if response.status_code == 200:
-        return response.json()
-    else:
-        print("Error:", response.status_code, response.text)
-        return [0] * len(documents)
+    async with aiohttp.ClientSession() as session:
+        async with session.post(f"{SELF_HOST_MODEL_SERVER_URL_BASE}/rerank", json=data, headers=headers) as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                print("Error:", response.status, await response.text())
+                # Return a list of zeros with the same length as documents on error
+                return [0] * len(documents)
 
 def chunk_by_sentence(document):
     return nltk.sent_tokenize(document)
 
+# @timeit # Keep the decorator definition but don't apply it to query itself for now as requested
 async def query(topic, max_results=100, config=QueryConfiguration()):
     # Dynamically construct the function name based on TABLE_NAME
     v_search_fn_name = f"tempalte_vector_search_{TABLE_NAME}"
@@ -182,73 +270,25 @@ async def query(topic, max_results=100, config=QueryConfiguration()):
 
     if config.refine_query:
         print("> Refining query...")
-        tp_resp = refine_query(topic)
+        tp_resp = await refine_query(topic) # Use await
         if not tp_resp:
             print("Refined query is empty, using original topic.")
             tp_resp = {"sentences": [topic], "keywords": [topic]}
         tp_resp["sentences"] = tp_resp["sentences"][:MAX_SUBQUERY_COUNT]
         tp_resp["keywords"] = tp_resp["keywords"][:MAX_SUBQUERY_COUNT]
 
-    # Embedding phrases
-    print("> Embedding phrases...")
-    eb_resp = text_encode(tp_resp["sentences"])
-
-    # Embedding phrases search
-    print("> Embedding vector search...")
-    tasks = []
-    for e in eb_resp:
-        sql, values = v_search_tmpl_builder(TABLE_NAME, e)
-        tasks.append(
-            asyncio.create_task(
-                execute_query(
-                    sql,
-                    values
-                )
-            )
-        )
-    e_res = await asyncio.gather(*tasks)
-
-    # Unique embedding phrases search results
-    unique_e_res = {}
-    for result_set in e_res:
-        for row in result_set:
-            result_id = row['id']
-            result_distance = row['distance']
-            if result_id not in unique_e_res or result_distance < unique_e_res[result_id]['distance']:
-                unique_e_res[result_id] = row
-    e_res = sorted(list(unique_e_res.values()), key=lambda x: x['distance'])
-
-    # BM25 search
-    print("> BM25 search...")
-    bm25_tasks = []
-    for b in tp_resp['keywords']:
-        sql, values = bm25_search_tmpl_builder(TABLE_NAME, b)
-        bm25_tasks.append(
-            asyncio.create_task(
-                execute_query(
-                    sql,
-                    values
-                )
-            )
-        )
-    b_res = await asyncio.gather(*bm25_tasks)
-
-    # Unique BM25 search results
-    unique_b_res = {}
-    for result_set in b_res:
-        for row in result_set:
-            result_id = row['id']
-            result_score = row['score']
-            if result_id not in unique_b_res or result_score > unique_b_res[result_id]['score']:
-                unique_b_res[result_id] = row
-    b_res = sorted(
-        list(unique_b_res.values()),
-        key=lambda x: x['score'],
-        reverse=True
+    # Perform embedding and BM25 searches concurrently
+    embedding_search_task = asyncio.create_task(
+        _perform_embedding_search(tp_resp, v_search_tmpl_builder, TABLE_NAME)
+    )
+    bm25_search_task = asyncio.create_task(
+        _perform_bm25_search(tp_resp, bm25_search_tmpl_builder, TABLE_NAME)
     )
 
+    e_res, b_res = await asyncio.gather(embedding_search_task, bm25_search_task)
 
     # Merge Vector and BM25 search results
+    print("> Fuse Score...")
     merged_results = {}
     for row in e_res:
         result_id = row['id']
@@ -268,7 +308,8 @@ async def query(topic, max_results=100, config=QueryConfiguration()):
             }
     m_res = sorted(merged_results.values(
     ), key=lambda x: x['distance'] if x['distance'] is not None else MAX_DISTANCE)
-
+    m_res = sorted(m_res, key=fusion_sort_key, reverse=True)
+    m_res = m_res[:max(MAX_RERANK_INPUT_LEN, max_results*10)]
  
     # Merge chunks
     print("> Merge chunks...")
@@ -313,14 +354,12 @@ async def query(topic, max_results=100, config=QueryConfiguration()):
                 )
         row['text'] = '...'.join([c['chunk_text'] for c in row['chunks']])
         del row['chunks']
-    m_res = sorted(m_res, key=fusion_sort_key, reverse=True)
-    m_res = m_res[:max(MAX_RERANK_INPUT_LEN, max_results*10)]
 
     if config.rerank:
         print("> Reranking...")
         print("> Input size: ", len(m_res))
         # Rerank the results based on the fusion score
-        scores = rerank(topic, [row['text'][:4096] for row in m_res], max_results)
+        scores = await rerank(topic, [row['text'][:4096] for row in m_res], max_results) # Use await
         for i in range(len(m_res)):
             m_res[i]['rank_score'] = scores[i]
     else:
@@ -353,10 +392,13 @@ async def query(topic, max_results=100, config=QueryConfiguration()):
 
     # # Image search
     # print("> Image search...")
-    # ie_resp = text_encode_sig(tp_resp['keywords'] + tp_resp['sentences'])
+    # ie_resp = await text_encode_sig(tp_resp['keywords'] + tp_resp['sentences']) # Use await
     # tasks = []
-    # for ir in ie_resp:
-    #     sql, values = img_search_tmpl_builder(IMAGE_TABLE_NAME, ir)
+    # if not ie_resp: # Handle empty response
+    #     print("Warning: Image embedding response was empty.")
+    # else:
+    #     for ir in ie_resp:
+    #         sql, values = img_search_tmpl_builder(IMAGE_TABLE_NAME, ir)
     #     tasks.append(
     #         asyncio.create_task(
     #             execute_query(

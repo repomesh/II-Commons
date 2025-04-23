@@ -42,25 +42,28 @@ def search(query: str, max_results: int = 20, rerank: bool = False, refine_query
         return ""
 
 @mcp.tool()
-def cg_search(query: str, max_results: int = 20) -> str:
-    """Searches the Common Ground Knowledge Base for relevant information based on the provided query.
-    
-    This function utilizes query refinement and result reranking for improved accuracy.
-    
+def cg_search_deep(query: str, max_results: int = 20) -> str:
+    """Searches the Common Ground Knowledge Base using query rewriting and reranking.
+
+    This function first rewrites the user's query using Gemini to extract keywords,
+    then performs a hybrid search using both embedding search and BM25,
+    and finally reranks the results for improved relevance.
+
     Args:
         query: The search query string.
         max_results: The maximum number of search results to return. Defaults to 20.
-        
+
     Returns:
         A formatted string containing the search results (titles, content, URLs) and image results (URLs, captions).
     """
     return search(query, max_results, True, True)
 
 @mcp.tool()
-def cg_search_quick(query: str, max_results: int = 20) -> str:
-    """Performs a faster search on the Common Ground Knowledge Base without query refinement or result reranking.
-    
-    This version is quicker but may be less accurate than cg_search.
+def cg_search(query: str, max_results: int = 20) -> str:
+    """Performs a direct search on the Common Ground Knowledge Base.
+
+    This function performs a hybrid search using both embedding search and BM25
+    without query rewriting or result reranking.
     
     Args:
         query: The search query string.
