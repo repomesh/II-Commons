@@ -1,0 +1,9 @@
+python-dotenv
+uvicorn
+pydantic
+sentence_transformers
+xformers
+torch
+torchvision
+fastapi
+google-genai
