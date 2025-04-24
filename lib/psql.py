@@ -60,6 +60,7 @@ def ensure_vector_extension():
     sqls = [
         'CREATE EXTENSION IF NOT EXISTS vchord CASCADE',
         # 'SET vchordrq.probes = 100'
+        # "ALTER SYSTEM SET vchordrq.prewarm_dim = '64,128,256,384,512,768,1024,1152,1536'"
     ]
     for sql in sqls:
         res = execute(sql)
@@ -160,6 +161,7 @@ def init(dataset):
                     build_threads = 6
                     spherical_centroids = true
                 $$)""",
+                f"SELECT vchordrq_prewarm('{table_name}_vector_index')"
             ])
         case 'ms_marco':
             list_sql = [
@@ -263,6 +265,7 @@ def init(dataset):
                 f"CREATE INDEX IF NOT EXISTS {table_name}_caption_index ON {table_name} (caption) WHERE caption = ''",
                 f"CREATE INDEX IF NOT EXISTS {table_name}_caption_long_index ON {table_name} (caption_long) WHERE caption_long = ''",
                 f'CREATE INDEX IF NOT EXISTS {table_name}_vector_null_index ON {table_name} (vector) WHERE vector IS NULL',
+                f"SELECT vchordrq_prewarm('{table_name}_vector_index')"
             ]
         case 'workers':
             list_sql = [
