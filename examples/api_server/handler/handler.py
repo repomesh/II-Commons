@@ -8,8 +8,8 @@ from pydantic import BaseModel
 from . import db_helper
 import nltk
 
-TABLE_NAME = "ts_text_0000002_en"
-IMAGE_TABLE_NAME = "ii_alpha"
+TABLE_NAME = "ts_wikipedia_en_embed"
+IMAGE_TABLE_NAME = "is_pd12m"
 
 # TABLE_NAME = "ts_ms_marco"
 pool = None
@@ -223,6 +223,27 @@ async def _perform_bm25_search(tp_resp, bm25_search_tmpl_builder, table_name):
         reverse=True
     )
 
+@timeit
+async def _perform_img_search(tp_resp, img_search_tmpl_builder):
+    """Performs image search asynchronously."""
+    print("> Image search...")
+    ie_resp = await text_encode_sig(tp_resp['keywords'] + tp_resp['sentences']) # Use await
+    tasks = []
+    if not ie_resp: # Handle empty response
+        print("Warning: Image embedding response was empty.")
+    else:
+        for ir in ie_resp:
+            sql, values = img_search_tmpl_builder(IMAGE_TABLE_NAME, ir)
+        tasks.append(
+            asyncio.create_task(
+                execute_query(
+                    sql,
+                    values
+                )
+            )
+        )
+    is_res = await asyncio.gather(*tasks)
+    return is_res
 
 async def execute_query(sql, values=None):
     async with pool.connection() as conn:
@@ -284,8 +305,11 @@ async def query(topic, max_results=100, config=QueryConfiguration()):
     bm25_search_task = asyncio.create_task(
         _perform_bm25_search(tp_resp, bm25_search_tmpl_builder, TABLE_NAME)
     )
+    img_search_task = asyncio.create_task(
+        _perform_img_search(tp_resp, img_search_tmpl_builder)
+    )
 
-    e_res, b_res = await asyncio.gather(embedding_search_task, bm25_search_task)
+    e_res, b_res, is_res = await asyncio.gather(embedding_search_task, bm25_search_task, img_search_task)
 
     # Merge Vector and BM25 search results
     print("> Fuse Score...")
@@ -315,7 +339,7 @@ async def query(topic, max_results=100, config=QueryConfiguration()):
     print("> Merge chunks...")
     merged_results = {}
     for row in m_res:
-        group_key = (row['source_id'], row['source_db'])
+        group_key = row['source_id']
         if group_key not in merged_results:
             merged_results[group_key] = {**row, 'chunks': []}
         merged_results[group_key]['distance'] = min(
@@ -390,39 +414,19 @@ async def query(topic, max_results=100, config=QueryConfiguration()):
             f"{row['id']:<10}    {distance:<15}    {score:<15}    {row['rank_score']:<15}    {title:<50}    {url:<50}    {text:<80}")
 
 
-    # # Image search
-    # print("> Image search...")
-    # ie_resp = await text_encode_sig(tp_resp['keywords'] + tp_resp['sentences']) # Use await
-    # tasks = []
-    # if not ie_resp: # Handle empty response
-    #     print("Warning: Image embedding response was empty.")
-    # else:
-    #     for ir in ie_resp:
-    #         sql, values = img_search_tmpl_builder(IMAGE_TABLE_NAME, ir)
-    #     tasks.append(
-    #         asyncio.create_task(
-    #             execute_query(
-    #                 sql,
-    #                 values
-    #             )
-    #         )
-    #     )
-    # is_res = await asyncio.gather(*tasks)
+    # Merge image results
+    unique_is_res = {}
+    for result_set in is_res:
+        for row in result_set:
+            result_id = row['id']
+            result_distance = row['distance']
+            if result_id not in unique_is_res or result_distance < unique_is_res[result_id]['distance']:
+                unique_is_res[result_id] = row
+    is_res = sorted(list(unique_is_res.values()), key=lambda x: x['distance'])
+    is_res = is_res[:max_results]
+    for row in is_res:
+        row["score"] = row.get("similarity", 0)
 
-
-    # unique_is_res = {}
-    # for result_set in is_res:
-    #     for row in result_set:
-    #         result_id = row['id']
-    #         result_distance = row['distance']
-    #         if result_id not in unique_is_res or result_distance < unique_is_res[result_id]['distance']:
-    #             unique_is_res[result_id] = row
-    # is_res = sorted(list(unique_is_res.values()), key=lambda x: x['distance'])
-    # is_res = is_res[:max_results]
-
-    # return [], is_res
-
-    is_res = []
     for row in m_res:
         row["score"] = row.get("rank_score", 0)
     return m_res, is_res

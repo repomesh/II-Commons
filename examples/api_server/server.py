@@ -18,7 +18,8 @@ class TextRequest(BaseModel):
                 "query": "I want to know information about documentaries related to World War II.",
                 "max_results": 20,
                 "options": {
-                    "rerank": True
+                    "rerank": True,
+                    "refine_query": False
                 },
             }
         }
@@ -33,6 +34,13 @@ class SearchResultImageItem(BaseModel):
     score: float
     url: str
     caption: str
+    processed_storage_id: str
+    aspect_ratio: float
+    exif: dict
+    meta: dict
+    source: List[str]
+    distance: float
+
 class SearchResp(BaseModel):
     results: List[SearchResultTextItem]
     images: List[SearchResultImageItem]
@@ -100,6 +108,7 @@ async def search_text(request: TextRequest):
         return {"results": results, "images": images}
 
     except Exception as e:
+        print(f"Search failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
     
 # Generate an MCP server directly from the FastAPI app
