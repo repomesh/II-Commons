@@ -1,5 +1,6 @@
 from lib.caption import BATCH_SIZE, caption_image
 from lib.config import GlobalConfig
+from lib.coordination import heartbeat
 from lib.dataset import init
 from lib.s3 import get_url_by_key
 
@@ -9,11 +10,16 @@ ds = None
 buffer = []
 
 
-def get_unprocessed():
+def get_unprocessed(name):
+    global last_item
+    worker_count, worker_order, reset = heartbeat(name)
+    if reset:
+        last_item = 0
     return ds.query(
         f'SELECT id, processed_storage_id FROM {ds.get_table_name()}'
-        + " WHERE id > %s AND caption != ''"
-        + ' ORDER BY id ASC LIMIT %s', (last_item, BATCH_SIZE)
+        + " WHERE  id %% %s = %s AND id > %s AND caption != ''"
+        + ' ORDER BY id ASC LIMIT %s',
+        (worker_count, worker_order, last_item, BATCH_SIZE)
     )
 
 
