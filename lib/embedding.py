@@ -48,7 +48,7 @@ def encode_text(texts, raw=False):
         init()
     start_time = time.time()
     inputs = tokenizer(
-        texts, padding=True, truncation=True, max_length=64, return_tensors='pt'
+        texts, padding='max_length', truncation=True, max_length=64, return_tensors='pt'
     ).to(device)
     with torch.no_grad():
         text_features = model.get_text_features(**inputs)

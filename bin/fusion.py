@@ -97,7 +97,10 @@ def query(topic):
 
     # Image search / Testing
     print("> Image search...")
-    ie_resp = encode_text_sig(tp_resp['keywords'] + tp_resp['sentences'])
+    print(tp_resp['keywords'] + tp_resp['sentences'])
+    ie_resp = encode_text_sig([k.lower() for k in (
+        tp_resp['keywords'] + tp_resp['sentences']
+    )] )
     is_res = []
     for ir in ie_resp:
         start = time.time()
@@ -110,7 +113,9 @@ def query(topic):
         ))
         end = time.time()
         print(f"Image search time taken: {end - start} seconds")
-        # print(is_res[0])
+        for x in is_res:
+            for y in x:
+                print(y['url'])
 
     # Unique Image search results
     # unique_is_res = {}

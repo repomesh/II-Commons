@@ -5,15 +5,15 @@ from lib.psql import batch_insert
 from lib.s3 import download_file
 from lib.text import process
 from lib.utilitas import json_dumps, sha256, read_json
-from lib.utilitas import sha256
 import os
 import sys
 import tempfile
 import time
 
 BATCH_SIZE = 100
-last_item, limit, buffer = 0, 0, []
-src_ds, dst_ds = None, None
+last_item, limit = 0, 0
+ds = None
+buffer = []
 
 def get_unprocessed(name):
     global last_item
