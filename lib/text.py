@@ -71,6 +71,7 @@ def process(document, size=2048, overlap=1):
 if __name__ == '__main__':
     resp = process('Hello, world!')
     print(resp)
+
 __all__ = [
     'init',
     'chunk',

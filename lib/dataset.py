@@ -222,6 +222,14 @@ RULES = {
     'ms_marco': {
         'fields': {},
         's3_path': S3_PATH,
+    },
+    'ms_marco_embed': {
+        'fields': {},
+        's3_path': S3_PATH,
+    },
+    'workers': {
+        'fields': {},
+        's3_path': S3_PATH,
     }
 }
 

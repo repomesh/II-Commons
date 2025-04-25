@@ -95,7 +95,7 @@ def get_table_name(dataset):
             head = 'ii'
         case 'pd12m':
             head = 'is'
-        case 'wikipedia_en' | 'wikipedia_en_embed' | 'arxiv' | 'ms_marco':
+        case 'wikipedia_en' | 'wikipedia_en_embed' | 'arxiv' | 'ms_marco' | 'ms_marco_embed':
             head = 'ts'
         case 'workers':
             head = 'sc'
@@ -161,6 +161,7 @@ def init(dataset):
                     build_threads = 6
                     spherical_centroids = true
                 $$)""",
+                f'CREATE INDEX IF NOT EXISTS {table_name}_vector_null_index ON {table_name} (vector) WHERE vector IS NULL',
                 f"SELECT vchordrq_prewarm('{table_name}_vector_index')"
             ])
         case 'arxiv':

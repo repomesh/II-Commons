@@ -3,7 +3,7 @@ from lib.coordination import heartbeat
 from lib.dataset import init
 from lib.psql import batch_insert
 from lib.s3 import download_file
-from lib.text import process
+from lib.text import encode, process
 from lib.utilitas import json_dumps, sha256, read_json
 import os
 import sys
@@ -12,8 +12,10 @@ import time
 
 BATCH_SIZE = 100
 last_item, limit = 0, 0
-ds = None
+src_ds, dst_ds = None, None
 buffer = []
+chunked = False
+
 
 def get_unprocessed(name):
     global last_item
@@ -24,28 +26,11 @@ def get_unprocessed(name):
     # worker_count, worker_order = 1, 0
     # start_time = time.time()
     resp = src_ds.query(
-        f"SELECT id, origin_storage_id FROM {src_ds.get_table_name()} t"
-        + f' WHERE NOT EXISTS (SELECT 1 from {dst_ds.get_table_name()} s'
-        + ' WHERE s.source_id = t.id) AND id %% %s = %s AND id > %s'
-        + ' AND t.ignored = FALSE'
+        f"SELECT id, chunk_text FROM {src_ds.get_table_name()}"
+        + ' WHERE id %% %s = %s AND id > %s AND vector IS NULL'
         + ' ORDER BY id ASC LIMIT %s',
         (worker_count, worker_order, last_item, BATCH_SIZE)
-    )
-    # print(
-    #     f'Fetching {BATCH_SIZE} rows took {time.time() - start_time:.2f} seconds.'
-    # )
-    return resp
-
-
-def get_unprocessed_chunked(name):
-    global last_item
-    worker_count, worker_order, reset = heartbeat(name)
-    # worker_count, worker_order, reset = 1, 0, False
-    if reset:
-        last_item = 0
-    # worker_count, worker_order = 1, 0
-    # start_time = time.time()
-    resp = src_ds.query(
+    ) if chunked else src_ds.query(
         f"SELECT id, origin_storage_id FROM {src_ds.get_table_name()} t"
         + f' WHERE NOT EXISTS (SELECT 1 from {dst_ds.get_table_name()} s'
         + ' WHERE s.source_id = t.id) AND id %% %s = %s AND id > %s'
@@ -82,6 +67,11 @@ def embedding(args) -> dict:
     for meta in meta_items:
         snapshot = src_ds.snapshot(meta)
         print(f'✨ Processing item: {snapshot}')
+        if chunked:
+            texts.append({
+                'id': meta['id'], 'text': meta['chunk_text'], 'meta': meta,
+            })
+            continue
         s3_address = meta['origin_storage_id']
         filename = os.path.join(temp_path.name, f"{meta['hash']}.json")
         try:
@@ -104,16 +94,18 @@ def embedding(args) -> dict:
         try:
             print('Embedding Documents...')
             snapshot = json_dumps(txt['id'])
-            end_res = process(txt['text'])
+            end_res = encode([txt['text']])
         except Exception as e:
             print(f'❌ ({snapshot}) Error embedding: {e}')
             continue
         if end_res is not None:
-            snapshot = txt['meta']['url']
+            snapshot = txt['meta'].get('url', txt['id'])
             items = []
             for j in range(len(end_res)):
                 chk = end_res[j]
                 items.append({
+                    'vector': chk['embedding'],
+                } if chunked else {
                     'title': txt['meta']['title'],
                     'url': txt['meta']['url'],
                     'snapshot': txt['origin_storage_id'],
@@ -124,23 +116,33 @@ def embedding(args) -> dict:
                 })
             try:
                 db_insert_time = time.time()
-                insert_query = f"""INSERT INTO {dst_ds.get_table_name()}
-                (title, url, snapshot, chunk_index,
-                 chunk_text, source_db, source_id, vector)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (source_db, source_id, chunk_index) DO NOTHING"""
-                records = []
-                for record in items:
-                    records.append((
-                        record['title'],
-                        record['url'],
-                        record['snapshot'],
-                        record['chunk_index'],
-                        record['chunk_text'],
-                        record['source_db'],
-                        record['source_id'],
-                        record['vector'],
-                    ))
+                if chunked:
+                    insert_query = f"""INSERT INTO {dst_ds.get_table_name()}
+                    (source_id, vector) VALUES (%s, %s)
+                    ON CONFLICT (source_id) DO NOTHING"""
+                    records = []
+                    for record in items:
+                        records.append((
+                            record['source_id'],
+                            record['vector'],
+                        ))
+                else:
+                    insert_query = f"""INSERT INTO {dst_ds.get_table_name()}
+                        (title, url, snapshot, chunk_index,
+                        chunk_text, source_id, vector)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (source_id, chunk_index) DO NOTHING"""
+                    records = []
+                    for record in items:
+                        records.append((
+                            record['title'],
+                            record['url'],
+                            record['snapshot'],
+                            record['chunk_index'],
+                            record['chunk_text'],
+                            record['source_id'],
+                            record['vector'],
+                        ))
                 batch_insert(insert_query, records)
                 db_insert_time = time.time() - db_insert_time
                 print(
@@ -159,18 +161,30 @@ def embedding(args) -> dict:
 
 
 def run(name):
-    global buffer, last_item, src_ds, dst_ds
-    target_db = f'{name}_embed'
-    try:
-        src_ds = init(name)
-    except Exception as e:
-        print(f"❌ Unable to init src-dataset: {name}. Error: {e}")
-        sys.exit(1)
-    try:
-        dst_ds = init(target_db)
-    except Exception as e:
-        print(f"❌ Unable to init dst-dataset: {target_db}. Error: {e}")
-        sys.exit(1)
+    global buffer, last_item, src_ds, dst_ds, chunked
+    match name:
+        case 'wikipedia_en':
+            target_db = f'{name}_embed'
+            try:
+                src_ds = init(name)
+            except Exception as e:
+                print(f"❌ Unable to init src-dataset: {name}. Error: {e}")
+                sys.exit(1)
+            try:
+                dst_ds = init(target_db)
+            except Exception as e:
+                print(f"❌ Unable to init dst-dataset: {target_db}. Error: {e}")
+                sys.exit(1)
+        case 'ms_marco':
+            target_db = f'{name}_embed'
+            chunked = True
+            try:
+                src_ds = dst_ds = init(target_db)
+            except Exception as e:
+                print(f"❌ Unable to init src-dataset: {target_db}. Error: {e}")
+                sys.exit(1)
+        case _:
+            raise ValueError(f'Unknown dataset: {name}')
     i, last_i = 0, -1
     while i > last_i:
         last_i = i
@@ -184,10 +198,11 @@ def run(name):
                 meta_snapshot = src_ds.snapshot(meta)
                 print(f"Processing row {i} - {last_item}: {meta_snapshot}")
                 # print(meta)
+                _id = meta.get('origin_storage_id', meta['id'])
                 buffer.append({
                     'id': meta['id'],
-                    'hash': sha256(meta['origin_storage_id']),
-                    'origin_storage_id': meta['origin_storage_id'],
+                    'hash': sha256(_id),
+                    'origin_storage_id': _id,
                 })
                 trigger()
                 if i >= limit > 0:
@@ -199,7 +214,7 @@ def run(name):
         trigger(force=True)
         if should_break:
             break
-    print('All Done!')
+    print('🎉 All Done!')
 
 
 __all__ = [

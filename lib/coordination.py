@@ -1,5 +1,5 @@
 from time import time
-from lib.psql import init
+from lib.dataset import init
 import uuid
 
 LIVE_TIME = 60 * 3
