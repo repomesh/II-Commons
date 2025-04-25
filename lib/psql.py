@@ -137,7 +137,7 @@ def init(dataset):
                 f'CREATE INDEX IF NOT EXISTS {table_name}_ignored_index ON {table_name} (ignored)',
             ]
             init('wikipedia_en_embed')
-        case 'wikipedia_en_embed':
+        case 'wikipedia_en_embed' | 'ms_marco_embed':
             list_sql.extend([
                 f"""CREATE TABLE IF NOT EXISTS {table_name} (
                     id BIGSERIAL PRIMARY KEY,
@@ -163,25 +163,6 @@ def init(dataset):
                 $$)""",
                 f"SELECT vchordrq_prewarm('{table_name}_vector_index')"
             ])
-        case 'ms_marco':
-            list_sql = [
-                f"""CREATE TABLE IF NOT EXISTS {table_name} (
-                    id BIGSERIAL PRIMARY KEY,
-                    item_id BIGINT,
-                    passage_id BIGINT,
-                    answers TEXT[],  -- Array of answers
-                    query TEXT,
-                    passage_text TEXT,
-                    is_selected INTEGER,
-                    url TEXT,
-                    query_id TEXT,
-                    query_type TEXT,
-                    well_formed_answers TEXT[],  -- Array of well formed answers
-                    vector halfvec(768)
-                )""",
-                f'CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING vchordrq (vector halfvec_cosine_ops)',
-                f"CREATE INDEX IF NOT EXISTS {table_name}_passage_text_index ON {table_name} USING bm25(id, passage_text) WITH(key_field='id')",
-            ]
         case 'arxiv':
             list_sql = [
                 f"""CREATE TABLE IF NOT EXISTS {table_name} (
@@ -280,6 +261,7 @@ def init(dataset):
             ]
         case _:
             raise ValueError(f'Unsupported dataset: {dataset}')
+            # KEEP this for SDSS algorithm
             # list_sql = [
             #     f"""CREATE TABLE IF NOT EXISTS {table_name} (
             #         id BIGSERIAL PRIMARY KEY,

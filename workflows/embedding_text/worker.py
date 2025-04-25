@@ -37,6 +37,28 @@ def get_unprocessed(name):
     return resp
 
 
+def get_unprocessed_chunked(name):
+    global last_item
+    worker_count, worker_order, reset = heartbeat(name)
+    # worker_count, worker_order, reset = 1, 0, False
+    if reset:
+        last_item = 0
+    # worker_count, worker_order = 1, 0
+    # start_time = time.time()
+    resp = src_ds.query(
+        f"SELECT id, origin_storage_id FROM {src_ds.get_table_name()} t"
+        + f' WHERE NOT EXISTS (SELECT 1 from {dst_ds.get_table_name()} s'
+        + ' WHERE s.source_id = t.id) AND id %% %s = %s AND id > %s'
+        + ' AND t.ignored = FALSE'
+        + ' ORDER BY id ASC LIMIT %s',
+        (worker_count, worker_order, last_item, BATCH_SIZE)
+    )
+    # print(
+    #     f'Fetching {BATCH_SIZE} rows took {time.time() - start_time:.2f} seconds.'
+    # )
+    return resp
+
+
 def trigger(force=False):
     global buffer
     # start_time = time.time()
