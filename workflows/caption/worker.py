@@ -12,7 +12,7 @@ buffer = []
 def get_unprocessed():
     return ds.query(
         f'SELECT id, processed_storage_id FROM {ds.get_table_name()}'
-        + " WHERE id > %s AND caption_qw25vl != ''"
+        + " WHERE id > %s AND caption != ''"
         + ' ORDER BY id ASC LIMIT %s', (last_item, BATCH_SIZE)
     )
 
