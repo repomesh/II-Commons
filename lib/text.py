@@ -52,8 +52,9 @@ def encode(chunks, query=False):
         resp = model.encode(chunks, prompt_name='query')
     else:
         resp = model.encode(chunks)
-    return resp.tolist()
-
+    resp = resp.tolist()
+    assert len(resp) == len(chunks), f"Length mismatch: {len(resp)} != {len(chunks)}"
+    return resp
 
 def process(document, size=2048, overlap=1):
     try:
@@ -76,5 +77,6 @@ __all__ = [
     'init',
     'chunk',
     'chunk_by_sentence',
+    'encode',
     'process',
 ]

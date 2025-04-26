@@ -65,7 +65,7 @@ def embedding(args) -> dict:
     temp_path = tempfile.TemporaryDirectory(suffix=f'-{task_hash}')
     texts = []
     for meta in meta_items:
-        snapshot = src_ds.snapshot(meta)
+        snapshot = f"{dst_ds.get_table_name()}/{meta['id']}" if chunked else src_ds.snapshot(meta)
         print(f'✨ Processing item: {snapshot}')
         if chunked:
             texts.append({
@@ -94,7 +94,7 @@ def embedding(args) -> dict:
         try:
             print('Embedding Documents...')
             snapshot = json_dumps(txt['id'])
-            end_res = encode([txt['text']])
+            end_res = encode([txt['text']]) if chunked else process([txt['text']])
         except Exception as e:
             print(f'❌ ({snapshot}) Error embedding: {e}')
             continue
@@ -103,9 +103,7 @@ def embedding(args) -> dict:
             items = []
             for j in range(len(end_res)):
                 chk = end_res[j]
-                items.append({
-                    'vector': chk['embedding'],
-                } if chunked else {
+                items.append({'vector': chk, 'id': txt['id']} if chunked else {
                     'title': txt['meta']['title'],
                     'url': txt['meta']['url'],
                     'snapshot': txt['origin_storage_id'],
@@ -117,15 +115,11 @@ def embedding(args) -> dict:
             try:
                 db_insert_time = time.time()
                 if chunked:
-                    insert_query = f"""INSERT INTO {dst_ds.get_table_name()}
-                    (source_id, vector) VALUES (%s, %s)
-                    ON CONFLICT (source_id) DO NOTHING"""
+                    insert_query = f"""UPDATE {dst_ds.get_table_name()}
+                    SET vector = %s WHERE id = %s"""
                     records = []
                     for record in items:
-                        records.append((
-                            record['source_id'],
-                            record['vector'],
-                        ))
+                        records.append((record['vector'], record['id']))
                 else:
                     insert_query = f"""INSERT INTO {dst_ds.get_table_name()}
                         (title, url, snapshot, chunk_index,
@@ -196,13 +190,14 @@ def run(name):
                 i += 1
                 last_item = meta['id']
                 meta_snapshot = src_ds.snapshot(meta)
-                print(f"Processing row {i} - {last_item}: {meta_snapshot}")
+                print(f"👀 Reading row {i} - {last_item}: {meta_snapshot}")
                 # print(meta)
-                _id = meta.get('origin_storage_id', meta['id'])
+                _id = meta.get('origin_storage_id', str(meta['id']))
                 buffer.append({
                     'id': meta['id'],
                     'hash': sha256(_id),
                     'origin_storage_id': _id,
+                    'chunk_text': meta.get('chunk_text', ''),
                 })
                 trigger()
                 if i >= limit > 0:
