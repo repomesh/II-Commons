@@ -10,7 +10,7 @@ import sys
 import tempfile
 import time
 
-BATCH_SIZE = 100
+BATCH_SIZE = 30
 last_item, limit = 0, 0
 src_ds, dst_ds = None, None
 buffer = []
@@ -90,20 +90,21 @@ def embedding(args) -> dict:
             print(f'❌ ({snapshot}) {e}')
             continue
     meta_items = []
-    for txt in texts:
+    for txt in [texts] if chunked else texts:
         try:
             print('Embedding Documents...')
-            snapshot = json_dumps(txt['id'])
-            end_res = encode([txt['text']]) if chunked else process([txt['text']])
+            snapshot = json_dumps([x['id'] for x in txt]) if chunked else txt['id']
+            end_res = encode([x['text'] for x in txt]) if chunked else process([txt['text']])
         except Exception as e:
             print(f'❌ ({snapshot}) Error embedding: {e}')
             continue
         if end_res is not None:
-            snapshot = txt['meta'].get('url', txt['id'])
+            if not chunked:
+                snapshot = txt['meta']['url']
             items = []
             for j in range(len(end_res)):
                 chk = end_res[j]
-                items.append({'vector': chk, 'id': txt['id']} if chunked else {
+                items.append({'vector': chk, 'id': txt[j]['id']} if chunked else {
                     'title': txt['meta']['title'],
                     'url': txt['meta']['url'],
                     'snapshot': txt['origin_storage_id'],
@@ -124,7 +125,7 @@ def embedding(args) -> dict:
                     insert_query = f"""INSERT INTO {dst_ds.get_table_name()}
                         (title, url, snapshot, chunk_index,
                         chunk_text, source_id, vector)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (source_id, chunk_index) DO NOTHING"""
                     records = []
                     for record in items:
@@ -139,12 +140,14 @@ def embedding(args) -> dict:
                         ))
                 batch_insert(insert_query, records)
                 db_insert_time = time.time() - db_insert_time
+                items_count = len(txt) if chunked else len(items)
                 print(
-                    f'🔥 ({snapshot}) Updated meta: {len(items)} items in {db_insert_time:.2f} seconds'
+                    f'🔥 ({snapshot}) Updated meta: {items_count} items in {db_insert_time:.2f} seconds'
                 )
-                del txt['meta']
-                del txt['text']
-                meta_items.append(txt)
+                if not chunked:
+                    del txt['meta']
+                    del txt['text']
+                    meta_items.append(txt)
             except Exception as e:
                 print(f'❌ ({snapshot}) Error updating meta: {e}')
                 print(txt['meta'])
@@ -190,7 +193,7 @@ def run(name):
                 i += 1
                 last_item = meta['id']
                 meta_snapshot = src_ds.snapshot(meta)
-                print(f"👀 Reading row {i} - {last_item}: {meta_snapshot}")
+                # print(f"👀 Reading row {i} - {last_item}: {meta_snapshot}")
                 # print(meta)
                 _id = meta.get('origin_storage_id', str(meta['id']))
                 buffer.append({
