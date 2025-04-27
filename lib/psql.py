@@ -381,7 +381,7 @@ def snapshot(meta):
         return get_url_by_key(meta.get('origin_storage_id'))
     elif meta.get('url'):
         return meta.get('url')
-    elif meta.get('id'):
+    elif meta.get('id') is not None:
         return meta.get('id')
     else:
         raise ValueError('No valid identifier found.')
