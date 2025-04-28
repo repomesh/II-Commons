@@ -100,7 +100,7 @@ def query(topic):
     print(tp_resp['keywords'] + tp_resp['sentences'])
     ie_resp = encode_text_sig([k.lower() for k in (
         tp_resp['keywords'] + tp_resp['sentences']
-    )] )
+    )])
     is_res = []
     for ir in ie_resp:
         start = time.time()
