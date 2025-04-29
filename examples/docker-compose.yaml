@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  model_serving_service:
+  model_server:
     build:
-      context: model_serving
+      context: model_server
       dockerfile: Dockerfile
-    container_name: model_serving_service
+    container_name: model_server
     ports:
       - "8001:8001"
     env_file:
@@ -17,18 +17,18 @@ services:
           devices:
             - capabilities: [gpu]
     volumes:
-      - ./model_serving/hf_cache:/cache/huggingface # Mount host cache directory to container
+      - ./model_server/hf_cache:/cache/huggingface # Mount host cache directory to container
 
-  rag_server:
+  api_server:
     build:
-      context: rag_server
+      context: api_server
       dockerfile: Dockerfile
-    container_name: rag_server
+    container_name: api_server
     ports:
       - "8080:8080"
       - "8081:8081"
     env_file:
       - .env
     depends_on:
-      - model_serving_service
+      - model_server
     restart: unless-stopped
