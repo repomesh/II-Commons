@@ -12,10 +12,12 @@ services:
       - .env
     restart: unless-stopped
     deploy:
-      resources:
-        reservations:
-          devices:
-            - capabilities: [gpu]
+        resources:
+            reservations:
+                devices:
+                    - driver: "nvidia"
+                      count: "all"
+                      capabilities: ["gpu"]
     volumes:
       - ./model_server/hf_cache:/cache/huggingface # Mount host cache directory to container
 
