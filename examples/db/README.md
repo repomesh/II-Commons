@@ -25,7 +25,7 @@ docker run --rm -it \
   -e POSTGRES_PASSWORD=postgres \
   -e POSTGRES_DB=testdb \
   -p 5432:5432 \
-  us-central1-docker.pkg.dev/backend-alpha-97077/iirepo/postgres:17-parade-vchord
+  us-central1-docker.pkg.dev/backend-alpha-97077/iirepo/postgres-17-parade-vchord
 ```
 
 ## Enabling Extensions in PostgreSQL
