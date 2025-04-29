@@ -20,14 +20,18 @@ MAX_RERANK_INPUT_LEN = 200
 MAX_SUBQUERY_COUNT = 3
 
 class QueryConfiguration(BaseModel):
-    refine_query: bool = False
+    refine_query: bool = True
     rerank: bool = True
+    vector_weight: float = 0.6
+    bm25_weight: float = 0.4
 
     class Config:
         json_schema_extra = {
             "example": {
-                "refine_query": False,
-                "rerank": False,
+                "refine_query": True,
+                "rerank": True,
+                "vector_weight": 0.6,
+                "bm25_weight": 0.4
             }
         }
 
@@ -69,13 +73,11 @@ async def init():
 async def clean():
     await clean_db()
 
-def fusion_sort_key(result):
+def fusion_sort_key(result, vector_weight=0.6, bm25_weight=0.4):
     distance = result['distance'] if result['distance'] is not None else MAX_DISTANCE
     score = result['score'] if result['score'] is not None else 0
     normalized_score = score / MAX_SCORE
     normalized_distance = 1 - (distance / MAX_DISTANCE)
-    vector_weight = 0.6
-    bm25_weight = 0.4
     fusion_score = vector_weight * normalized_distance + bm25_weight * normalized_score
     return fusion_score
 
@@ -332,7 +334,9 @@ async def query(topic, max_results=100, config=QueryConfiguration()):
             }
     m_res = sorted(merged_results.values(
     ), key=lambda x: x['distance'] if x['distance'] is not None else MAX_DISTANCE)
-    m_res = sorted(m_res, key=fusion_sort_key, reverse=True)
+    def sort_key_fn(result):
+        return fusion_sort_key(result, config.vector_weight, config.bm25_weight)
+    m_res = sorted(m_res, key=sort_key_fn, reverse=True)
     m_res = m_res[:max(MAX_RERANK_INPUT_LEN, max_results*10)]
  
     # Merge chunks

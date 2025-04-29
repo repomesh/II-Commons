@@ -18,8 +18,10 @@ class TextRequest(BaseModel):
                 "query": "I want to know information about documentaries related to World War II.",
                 "max_results": 20,
                 "options": {
+                    "refine_query": True,
                     "rerank": True,
-                    "refine_query": False
+                    "vector_weight": 0.6,
+                    "bm25_weight": 0.4
                 },
             }
         }
