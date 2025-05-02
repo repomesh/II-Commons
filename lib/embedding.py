@@ -1,9 +1,10 @@
 from lib.utilitas import reshape_image
 from PIL import Image
 from transformers import AutoProcessor, AutoTokenizer, AutoModel
+import numpy
+import os
 import time
 import torch
-import os
 
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
@@ -21,6 +22,35 @@ model, processor, tokenizer, device = None, None, None, None
 def prepare_image(img):
     return Image.fromarray(reshape_image(img, size=MAX_IMAGE_SIZE, fit=False))
 
+def normalize(features):
+    if isinstance(features, torch.Tensor):
+        tensor = features
+    else:
+        processed = []
+        dtypes = []
+        for x in features:
+            if isinstance(x, torch.Tensor):
+                arr = x.cpu().numpy()
+            elif hasattr(x, 'tolist'):
+                arr = x.tolist()
+            elif hasattr(x, 'numpy'):
+                arr = x.numpy()
+            elif hasattr(x, 'to_numpy'):
+                arr = x.to_numpy()
+            else:
+                raise TypeError(f"Cannot convert {type(x)} to array. Please provide a .tolist() or .to_numpy() method.")
+            arr = numpy.array(arr)
+            dtypes.append(arr.dtype)
+            processed.append(arr)
+        if all(dt == numpy.float16 for dt in dtypes):
+            target_dtype = numpy.float16
+            torch_dtype = torch.float16
+        else:
+            target_dtype = numpy.float32
+            torch_dtype = torch.float32
+        processed = [numpy.array(a, dtype=target_dtype) for a in processed]
+        tensor = torch.tensor(numpy.stack(processed), dtype=torch_dtype)
+    return torch.nn.functional.normalize(tensor, p=2, dim=1).cpu().numpy()
 
 def init(model_name=MODEL_NAME):
     global model
@@ -48,7 +78,7 @@ def encode_text(texts, raw=False):
         init()
     start_time = time.time()
     inputs = tokenizer(
-        texts, padding=True, truncation=True, max_length=64, return_tensors='pt'
+        texts, padding='max_length', truncation=True, max_length=64, return_tensors='pt'
     ).to(device)
     with torch.no_grad():
         text_features = model.get_text_features(**inputs)
@@ -56,7 +86,7 @@ def encode_text(texts, raw=False):
     c, t = len(texts), end_time - start_time
     r = t / c if c != 0 else 0
     print(f'Encoded {c} texts in {t:.2f} seconds, {r:.2f} sec/txt.')
-    return text_features if raw else text_features.cpu().numpy()
+    return text_features if raw else normalize(text_features)
 
 
 def encode_image(imgs, raw=False):
@@ -72,7 +102,7 @@ def encode_image(imgs, raw=False):
     c, t = len(images), end_time - start_time
     r = t / c if c != 0 else 0
     print(f'Encoded {c} images in {t:.2f} seconds, {r:.2f} sec/img.')
-    return image_features if raw else image_features.cpu().numpy()
+    return image_features if raw else normalize(image_features)
 
 
 __all__ = [
@@ -84,4 +114,5 @@ __all__ = [
     'DIMENSION',
     'encode_image',
     'encode_text',
+    'normalize',
 ]

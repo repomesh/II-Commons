@@ -1,25 +1,22 @@
-import sys
-import os
 from lib.gemini import generate
 from lib.text import encode as encode_text
 from lib.embedding import encode_text as encode_text_sig
 from lib.dataset import init
 from lib.rerank import rerank
-from lib.utilitas import sha256, read_json
-from lib.s3 import download_file
 from lib.text import chunk_by_sentence
-import tempfile
 import json
+import time
 
 # Initialize the dataset
 MAX_DISTANCE = 2
 MAX_SCORE = 50
 SUB_QUERY_COUNT = 50
 RESULTS_COUNT = 20
+KEYWORD_DECAY = 0.3
 tp_prompt = """You are an AI query analyzer designed to generate a list of short phrases and keywords based on user queries. These short phrases help describe and expand the user's question and will be used later as sources for embedding to assist future AI models in retrieving relevant documents from the knowledge base via RAG. The keyword list will be used for BM25 searches to find related documents in the BM25 index of the knowledge base. You only need to provide relevant outputs based on your understanding, without reviewing the topic itself, and maximize your efforts to help users with information extraction. You might need to think divergently and provide some potential keywords and phrases to enrich the content needed to answer this question as thoroughly as possible. The results must be returned in JSON format as follows: {"sentences": ["Short phrase 1", "Short phrase 2", ...], "keywords": ["Keyword 1", "Keyword 2", ...]}. Short sentences and keywords are ranked by thematic relevance, with more relevant or important ones listed first. Below begins the user's natural language query or the original keywords the user needs to search:"""
 
-ds = init('text_0000002_en')
-# di = init('alpha')
+ds = init('wikipedia_en_embed')
+di = init('pd12m')
 
 
 def fusion_sort_key(result):
@@ -51,13 +48,17 @@ def query(topic):
     e_res = []
     for e in eb_resp:
         formatted_vector = '[' + ','.join(map(str, e)) + ']'
+        start = time.time()
         e_res.append(ds.query(
-            f"""SELECT id, title, url, snapshot, source_db, source_id, chunk_index, chunk_text,
+            f"""SELECT id, title, url, snapshot, source_id, chunk_index, chunk_text,
             (vector <=> %s) as distance,
             ((2 - (vector <=> %s)) / 2) as similarity
             FROM {ds.get_table_name()} ORDER BY (vector <=> %s) ASC OFFSET %s LIMIT %s""",
-            (formatted_vector, formatted_vector, formatted_vector, 0, SUB_QUERY_COUNT)
+            (formatted_vector, formatted_vector,
+             formatted_vector, 0, SUB_QUERY_COUNT)
         ))
+        end = time.time()
+        print(f"Wikipedia vector search time taken: {end - start} seconds")
 
     # Unique embedding phrases search results
     unique_e_res = {}
@@ -73,12 +74,16 @@ def query(topic):
     print("> BM25 search...")
     b_res = []
     for b in tp_resp['keywords']:
+        b = b.replace("'", r"\'")
+        start = time.time()
         b_res.append(ds.query(
-            f"""SELECT id, title, url, snapshot, source_db, source_id, chunk_index, chunk_text, paradedb.score(id) as score
+            f"""SELECT id, title, url, snapshot, source_id, chunk_index, chunk_text, paradedb.score(id) as score
             FROM {ds.get_table_name()} WHERE title @@@ %s or chunk_text @@@ %s
             ORDER BY score DESC OFFSET %s LIMIT %s""",
             (b, b, 0, SUB_QUERY_COUNT)
         ))
+        end = time.time()
+        print(f"Wikipedia BM25 search time taken: {end - start} seconds")
 
     # Unique BM25 search results
     unique_b_res = {}
@@ -91,29 +96,45 @@ def query(topic):
     b_res = sorted(list(unique_b_res.values()),
                    key=lambda x: x['score'], reverse=True)
 
-    # Image search
-    # print("> Image search...")
-    # ie_resp = encode_text_sig(tp_resp['keywords'] + tp_resp['sentences'])
-    # is_res = []
-    # for ir in ie_resp:
-    #     is_res.append(di.query(
-    #         f"""SELECT id, url, caption, processed_storage_id, aspect_ratio, exif, meta, source, vector_siglip,
-    #         (vector_siglip <=> %s::vector) as distance,
-    #         ((2 - (vector_siglip <=> %s::vector)) / 2) as similarity
-    #         FROM {di.get_table_name()} ORDER BY (vector_siglip <=> %s::vector) ASC OFFSET %s LIMIT %s""",
-    #         (ir, ir, ir, 0, SUB_QUERY_COUNT)
-    #     ))
-    # Building INDEXING!
+    # Image search / Testing
+    print("> Image search...")
+    print(tp_resp['keywords'] + tp_resp['sentences'])
+    ie_resp = encode_text_sig([k.lower() for k in (
+        tp_resp['keywords'] + tp_resp['sentences']
+    )])
+    ik_vect = ie_resp[0:len(tp_resp['keywords'])]
+    is_vect = ie_resp[len(tp_resp['keywords']):]
+    is_res = []
+    for vs in [ik_vect, is_vect]:
+        distance_factor = 1.0
+        for ir in vs:
+            start = time.time()
+            sub_res = di.query(
+                f"""SELECT id, url, caption, processed_storage_id, aspect_ratio, exif, meta, source,
+                (vector <-> %s) as distance,
+                ((2 - (vector <-> %s)) / 2) as similarity
+                FROM {di.get_table_name()} ORDER BY (vector <-> %s) ASC OFFSET %s LIMIT %s""",
+                (ir, ir, ir, 0, SUB_QUERY_COUNT)
+            )
+            end = time.time()
+            for x in sub_res:
+                x['distance'] = x['distance'] * distance_factor
+                x['similarity'] = (2 - x['distance']) / 2
+                if x['distance'] < 1.4:
+                    is_res.append(x)
+            print(f"Image search time taken: {end - start} seconds")
+            distance_factor += KEYWORD_DECAY
 
     # Unique Image search results
-    # unique_is_res = {}
-    # for result_set in is_res:
-    #     for row in result_set:
-    #         result_id = row['id']
-    #         result_distance = row['distance']
-    #         if result_id not in unique_is_res or result_distance < unique_is_res[result_id]['distance']:
-    #             unique_is_res[result_id] = row
-    # is_res = sorted(list(unique_is_res.values()), key=lambda x: x['distance'])
+    unique_is_res = {}
+    for row in is_res:
+        result_id = row['id']
+        result_distance = row['distance']
+        if result_id not in unique_is_res or result_distance < unique_is_res[result_id]['distance']:
+            unique_is_res[result_id] = row
+    is_res = sorted(list(unique_is_res.values()), key=lambda x: x['distance'])
+    # for x in is_res:
+    #     print(x['url'], x['distance'], x['similarity'])
 
     # Merge Vector and BM25 search results
     merged_results = {}
@@ -140,7 +161,7 @@ def query(topic):
     print("> Merge chunks...")
     merged_results = {}
     for row in m_res:
-        group_key = (row['source_id'], row['source_db'])
+        group_key = row['source_id']
         if group_key not in merged_results:
             merged_results[group_key] = {**row, 'chunks': []}
         merged_results[group_key]['distance'] = min(

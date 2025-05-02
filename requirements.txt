@@ -6,7 +6,7 @@ bs4
 flash-attn
 google-cloud-storage
 google-genai
-hatchet_sdk
+# hatchet_sdk
 imageio_ffmpeg
 nltk
 openAI
@@ -24,5 +24,6 @@ requests
 scenedetect
 scipy
 sentence_transformers
+torchvision
 # vllm
 yt-dlp

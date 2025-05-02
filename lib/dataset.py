@@ -207,19 +207,11 @@ RULES = {
         'fields': {},
         's3_path': S3_PATH,
     },
-    'testing': {
-        'fields': {},
-        's3_path': S3_PATH,
-    },
     'wikipedia_en': {
         'fields': {},
         's3_path': S3_PATH,
     },
-    'text_0000001_en': {
-        'fields': {},
-        's3_path': S3_PATH,
-    },
-    'text_0000002_en': {
+    'wikipedia_en_embed': {
         'fields': {},
         's3_path': S3_PATH,
     },
@@ -228,6 +220,14 @@ RULES = {
         's3_path': S3_PATH,
     },
     'ms_marco': {
+        'fields': {},
+        's3_path': S3_PATH,
+    },
+    'ms_marco_embed': {
+        'fields': {},
+        's3_path': S3_PATH,
+    },
+    'workers': {
         'fields': {},
         's3_path': S3_PATH,
     }
