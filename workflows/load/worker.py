@@ -1,14 +1,10 @@
 from lib.config import GlobalConfig
 from lib.dataset import init
-from lib.gcs import download_file
 from lib.meta import parse_jsonl, parse_dict_parquet, parse_wiki_featured, parse_tube_parquet
-from lib.s3 import exists, get_address_by_key, upload_file
-from lib.utilitas import download, json_dumps, sha256, get_file_type
 import os
-import tempfile
 import time
 
-BATCH_SIZE = 1
+BATCH_SIZE = 1000
 last_item, limit, i = 0, 0, 0
 dataset_name = None
 ds = None
@@ -21,7 +17,7 @@ def trigger(force=False):
         if GlobalConfig.DRYRUN:
             print(f"Dryrun: {buffer}")
         else:
-            download_data({'meta_items': buffer})
+            insert_data({'meta_items': buffer})
         buffer = []
 
 
@@ -30,63 +26,19 @@ def sleep(seconds=1):
     time.sleep(seconds)
 
 
-def download_data(args) -> dict:
+def insert_data(args) -> dict:
     meta_items = args['meta_items'] if type(args['meta_items']) == list \
         else [args['meta_items']]
-    task_hash = sha256(json_dumps(meta_items))
-    temp_path = tempfile.TemporaryDirectory(suffix=f'-{task_hash}')
-    results = []
     for meta in meta_items:
         snapshot = ds.snapshot(meta)
         print(f'✨ Processing item: {snapshot}')
-        s3_key = ds.get_s3_key(meta)
-        match dataset_name:
-            case 'arxiv':
-                subfix = 'pdf'
-            case _:
-                subfix = 'jpg'
-        filename = os.path.join(temp_path.name, f"{meta['hash']}.{subfix}")
         try:
-            match dataset_name:
-                case 'arxiv':
-                    if exists(s3_key):
-                        meta['origin_storage_id'] = get_address_by_key(s3_key)
-                        print(f"Skipping download: {meta['origin_storage_id']}")
-                    else:
-                        arr_pid = meta['paper_id'].split('/')
-                        if len(arr_pid) == 1:
-                            gcs_url = f"gs://arxiv-dataset/arxiv/arxiv/pdf/{meta['paper_id'].split('.')[0]}/{meta['paper_id']}{meta['versions'][-1]}.pdf"
-                        elif len(arr_pid) == 2:
-                            gcs_url = f"gs://arxiv-dataset/arxiv/{arr_pid[0]}/pdf/{arr_pid[1][:4]}/{arr_pid[1]}{meta['versions'][-1]}.pdf"
-                        else:
-                            print(meta)
-                            raise ValueError('Invalid paper_id.')
-                        try:
-                            # hack:
-                            os.environ['GCS_BUCKET'] = "arxiv-dataset"
-                            download_file(gcs_url, filename)
-                            print(f"Downloaded {gcs_url} to: {filename}")
-                        except Exception as e:
-                            print(
-                                f"Fownload failed from GCS: {gcs_url}, try direct download..."
-                            )
-                            download(meta['url'], filename)
-                            print(f"Downloaded {meta['url']} to: {filename}")
-                        if get_file_type(filename) != 'PDF':
-                            raise ValueError('Unexpected file type.')
-                        meta['origin_storage_id'] = upload_file(filename, s3_key)
-                        print(f"Uploaded to S3: {meta['origin_storage_id']}")
-                case _:
-                    if meta['url'].endswith('.jpg'):
-                        print(f"Skipping download: {meta['url']}")
-            ds.insert(meta)
+            ds.insert(meta) # TODO: batch insert
             print(f'🔥 Inserted meta: {snapshot}')
         except Exception as e:
             print(f'❌ Error handling {snapshot}: {e}')
-            continue
-        results.append(meta)
     print('👌 Done!')
-    return {'meta_items': results}
+    return {'meta_items': meta_items}
 
 
 def run(name, meta_path):

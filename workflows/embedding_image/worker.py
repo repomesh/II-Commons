@@ -22,10 +22,23 @@ def get_unprocessed(name):
     if reset:
         last_item = 0
     # worker_count, worker_order = 1, 0
-    return ds.get_unprocessed(
-        limit=BATCH_SIZE, offset=last_item,
-        mod_by=worker_count, mod_remain=worker_order
-    )
+    where_conditions = ['(processed_storage_id = %s OR vector IS NULL)']
+    params = ['']
+    if worker_count > 1 and worker_order > 0:
+        where_conditions.append('id %% %s = %s')
+        params.extend([worker_count, worker_order])
+    resp = ds.query(f'SELECT * FROM {ds.get_table_name()}'
+                 + ' WHERE ' + ' AND '.join(where_conditions)
+                 + ' AND id > %s ORDER BY id ASC LIMIT %s',
+                 tuple(params + [last_item, BATCH_SIZE]))
+    res = []
+    for item in resp:
+        nItem = item.copy()
+        for field in item.keys():
+            if field.startswith('vector'):
+                nItem.pop(field, None)
+        res.append(nItem)
+    return res
 
 
 def trigger(force=False):

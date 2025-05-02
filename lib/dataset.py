@@ -262,7 +262,8 @@ def init(name, i2d=False):
             case 'arxiv':
                 subfix = 'pdf'
         return os.path.join(
-            RULES[name].get('s3_path', S3_PATH), f"{meta['hash']}.{subfix}"
+            RULES[name].get('s3_path', S3_PATH),
+            f"{meta['hash'] if meta.get('hash') else sha256(meta['url'])}.{subfix}"
         )
 
     def get_s3_key_i2d(origin_meta):

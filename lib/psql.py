@@ -429,29 +429,6 @@ def update_by_id(dataset, id, data, deplicate_ignore=[], tail=''):
     return result
 
 
-def get_unprocessed(dataset, limit=10, offset=0, mod_by=None, mod_remain=None):
-    table_name = get_table_name(dataset)
-    where_conditions = ['(processed_storage_id = %s OR vector IS NULL)']
-    params = ['']
-
-    if mod_by is not None and mod_remain is not None:
-        where_conditions.append('id %% %s = %s')
-        params.extend([mod_by, mod_remain])
-
-    resp = query(f'SELECT * FROM {table_name}'
-                 + ' WHERE ' + ' AND '.join(where_conditions)
-                 + ' AND id > %s ORDER BY id ASC LIMIT %s',
-                 tuple(params + [offset, limit]))
-    res = []
-    for item in resp:
-        for field in item.keys():
-            if field.startswith('vector'):
-                nItem = item.copy()
-                nItem.pop(field, None)
-                res.append(nItem)
-    return res
-
-
 def batch_insert(sql=None, values=None, **kwargs):
     return execute(sql, values, batch=True, **kwargs)
 
@@ -499,9 +476,6 @@ def get_dataset(dataset):
     def truncate_instant(force=False):
         return truncate(dataset, force=force)
 
-    def get_unprocessed_instant(**kwargs):
-        return get_unprocessed(dataset, **kwargs)
-
     def exists(meta):
         return url_exists_instant(meta['url'])
 
@@ -509,7 +483,6 @@ def get_dataset(dataset):
     ds.init = init_instant
     ds.exists = exists
     ds.get_table_name = get_table_name_instant
-    ds.get_unprocessed = get_unprocessed_instant
     ds.insert = insert_instant
     ds.truncate = truncate_instant
     ds.query = query_instant
@@ -529,7 +502,6 @@ __all__ = [
     'generate_empty_vector',
     'get_dataset',
     'get_table_name',
-    'get_unprocessed',
     'batch_insert',
     'hash_exists',
     'init',

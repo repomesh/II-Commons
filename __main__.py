@@ -9,6 +9,8 @@ from typing import Optional
 # from workflows.caption import run_host as run_caption_host, run_worker as run_caption_worker
 from workflows.embedding_image import run_worker as run_embedding_image_worker
 from workflows.embedding_text import run_worker as run_embedding_text_worker
+from workflows.fetch import run_worker as run_fetch_worker
+from workflows.load import run_worker as run_load_worker
 # from workflows.fetch import run_host as run_dataset_fetch_host, run_worker as run_dataset_fetch_worker
 import argparse
 import atexit
@@ -33,17 +35,20 @@ atexit.register(cleanup)
 
 
 def run_worker(worker_name: str, dataset_name: str):
-    # if worker_name == 'dataset_fetch':
-    #     run_dataset_fetch_worker()
-    if worker_name == 'embedding_text':
-        run_embedding_text_worker(dataset_name)
-    elif worker_name == 'embedding_image':
-        run_embedding_image_worker(dataset_name)
-    # elif worker_name == 'caption':
-    #     run_caption_worker()
-    else:
-        logger.error(f"Invalid worker name: {worker_name}")
-        return 1
+    match worker_name:
+        # case 'load':
+        #     run_load_worker(dataset_name)
+        case 'fetch':
+            run_fetch_worker(dataset_name)
+        case 'embedding_text':
+            run_embedding_text_worker(dataset_name)
+        case 'embedding_image':
+            run_embedding_image_worker(dataset_name)
+        # case 'caption':
+        #     run_caption_worker()
+        case _:
+            logger.error(f"Invalid worker name: {worker_name}")
+            return 1
 
 
 def parse_args() -> argparse.Namespace:
@@ -81,7 +86,7 @@ Demo:
 
     parser.add_argument(
         '-w', '--worker',
-        help='run worker: fetch, embedding',
+        help='run worker: load, fetch, embedding_text, embedding_image, caption',
         type=str,
         required=False
     )
