@@ -79,9 +79,12 @@ def init_image(size, channel=3, color=None, dtype=numpy.uint8):
 
 
 def read_image(file, as_bgr=False, as_rgba=False):  # default as RGB
-    image = ImageOps.exif_transpose(Image.open(file)).convert(
-        'RGBA' if as_rgba else 'RGB'
-    )
+    img = Image.open(file)
+    try:
+        img = ImageOps.exif_transpose(img)
+    except Exception as e:
+        print(f'Error decoding exif from {file}: {e}')
+    image = img.convert('RGBA' if as_rgba else 'RGB')
     image = numpy.array(image)
     return invert_color(image) if as_bgr else image
 
@@ -398,7 +401,12 @@ def media_info(file):
 def extract_exif(file):
     exif = {}
     image = Image.open(file)
-    for tag, value in image.getexif().items():
+    try:
+        raw_exif = image.getexif().items()
+    except Exception as e:
+        print(f'Error extracting exif from {file}: {e}')
+        return None
+    for tag, value in raw_exif:
         if tag in ExifTags.TAGS:
             if value.__class__.__name__ == 'bytes':
                 for encoding in ['utf-16', 'utf-8', 'latin1']:

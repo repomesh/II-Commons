@@ -21,7 +21,7 @@ def get_unprocessed(name):
     worker_count, worker_order, reset = heartbeat(name)
     if reset:
         last_item = 0
-    # worker_count, worker_order = 1, 0
+    worker_count, worker_order = 1, 0
     where_conditions = ['(processed_storage_id = %s OR vector IS NULL)']
     params = ['']
     if worker_count > 1 and worker_order > 0:
@@ -89,7 +89,7 @@ def embedding(args) -> dict:
                 meta = ps_result['meta']
                 meta['processed_storage_id'] = s3_address
             else:
-                meta = {}
+                meta = {'processed_storage_id': meta['origin_storage_id']}
             if not os.path.exists(filename) and not s3_address:
                 raise Exception(f'Download / upload failed.')
             images.append({
@@ -147,6 +147,7 @@ def run(name):
             meta_snapshot = ds.snapshot(meta)
             print(f"Processing row {i} - {last_item}: {meta_snapshot}")
             # print(meta)
+            meta['hash'] = meta['hash'] if meta.get('hash') else sha256(meta['url'])
             buffer.append({
                 'id': meta['id'],
                 'hash': sha256(meta['processed_storage_id']) if dataset_name == 'alpha' else meta['hash'],
