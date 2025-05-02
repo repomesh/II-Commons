@@ -238,11 +238,12 @@ def init(dataset):
                 f'CREATE INDEX IF NOT EXISTS {table_name}_source_index ON {table_name} USING gin(source)',
                 f'CREATE INDEX IF NOT EXISTS {table_name}_created_at_index ON {table_name} (created_at)',
                 f'CREATE INDEX IF NOT EXISTS {table_name}_updated_at_index ON {table_name} (updated_at)',
-                f"""CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING vchordrq (vector halfvec_cosine_ops)  WITH (options = $$
+                f"""CREATE INDEX IF NOT EXISTS {table_name}_vector_index ON {table_name} USING vchordrq (vector halfvec_l2_ops)  WITH (options = $$
+                    residual_quantization = true
                     [build.internal]
-                    lists = [14000]
+                    lists = [20000]
                     build_threads = 6
-                    spherical_centroids = true
+                    spherical_centroids = false
                 $$)""",
                 f"CREATE INDEX IF NOT EXISTS {table_name}_caption_index ON {table_name} (caption) WHERE caption = ''",
                 f"CREATE INDEX IF NOT EXISTS {table_name}_caption_long_index ON {table_name} (caption_long) WHERE caption_long = ''",
