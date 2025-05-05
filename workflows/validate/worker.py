@@ -61,7 +61,10 @@ def download_data(args) -> dict:
     for meta in meta_items:
         snapshot = ds.snapshot(meta)
         print(f'✨ Processing item: {snapshot}')
-        s3_key = ds.get_s3_key(meta)
+        current_s3_key = meta.get('origin_storage_id')
+        s3_key = meta['origin_storage_id'] if (
+            current_s3_key is not None and current_s3_key != ''
+        ) else ds.get_s3_key(meta)
         match dataset_name:
             case 'arxiv':
                 subfix = 'pdf'
