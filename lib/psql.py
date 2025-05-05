@@ -166,43 +166,47 @@ def init(dataset):
             ])
         case 'arxiv':
             list_sql = [
-                f"""CREATE TABLE IF NOT EXISTS {table_name} (
-                    id BIGSERIAL PRIMARY KEY,
-                    paper_id VARCHAR NOT NULL, -- id
-                    submitter JSONB NOT NULL DEFAULT '[]',
-                    authors JSONB NOT NULL DEFAULT '[]',
-                    title VARCHAR NOT NULL,
-                    comments VARCHAR NOT NULL DEFAULT '',
-                    journal_ref VARCHAR NOT NULL DEFAULT '', -- journal-ref
-                    doi VARCHAR NOT NULL DEFAULT '',
-                    report_no VARCHAR NOT NULL DEFAULT '', -- report-no
-                    categories JSONB NOT NULL DEFAULT '[]',
-                    versions JSONB NOT NULL DEFAULT '[]',
-                    hash VARCHAR NOT NULL, --abstract_md5
-                    license VARCHAR NOT NULL DEFAULT '',
-                    abstract VARCHAR NOT NULL DEFAULT '',
-                    url VARCHAR NOT NULL,
-                    origin_storage_id VARCHAR(1024) NOT NULL DEFAULT '',
-                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-                )""",
-                f'CREATE INDEX IF NOT EXISTS {table_name}_abstract_index ON {table_name} USING gin(abstract)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_authors_index ON {table_name} USING gin(authors)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_categories_index ON {table_name} USING gin(categories)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_comments_index ON {table_name} USING gin(comments)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_created_at_index ON {table_name} (created_at)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_doi_index ON {table_name} (doi)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_journal_ref_index ON {table_name} (journal_ref)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_license_index ON {table_name} (license)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_origin_storage_id_index ON {table_name} (origin_storage_id)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_report_no_index ON {table_name} (report_no)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_submitter_index ON {table_name} USING gin(submitter)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_title_index ON {table_name} USING gin(title)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_updated_at_index ON {table_name} (updated_at)',
-                f'CREATE INDEX IF NOT EXISTS {table_name}_versions_index ON {table_name} USING gin(versions)',
-                f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_hash_index ON {table_name} (hash)',
-                f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_paper_id_index ON {table_name} (paper_id)',
-                f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_url_index ON {table_name} (url)',
+                # todo: disabled temporary by @Leask
+                # f"""CREATE TABLE IF NOT EXISTS {table_name} (
+                #     id BIGSERIAL PRIMARY KEY,
+                #     paper_id VARCHAR NOT NULL, -- id
+                #     submitter JSONB NOT NULL DEFAULT '[]',
+                #     authors JSONB NOT NULL DEFAULT '[]',
+                #     title VARCHAR NOT NULL,
+                #     comments VARCHAR NOT NULL DEFAULT '',
+                #     journal_ref VARCHAR NOT NULL DEFAULT '', -- journal-ref
+                #     doi VARCHAR NOT NULL DEFAULT '',
+                #     report_no VARCHAR NOT NULL DEFAULT '', -- report-no
+                #     categories JSONB NOT NULL DEFAULT '[]',
+                #     versions JSONB NOT NULL DEFAULT '[]',
+                #     hash VARCHAR NOT NULL, --abstract_md5
+                #     license VARCHAR NOT NULL DEFAULT '',
+                #     abstract VARCHAR NOT NULL DEFAULT '',
+                #     url VARCHAR NOT NULL,
+                #     origin_storage_id VARCHAR(1024) NOT NULL DEFAULT '',
+                #     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                #     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                # )""",
+                # f'CREATE INDEX IF NOT EXISTS {table_name}_abstract_index ON {table_name} USING gin(abstract)',
+                # f'CREATE INDEX IF NOT EXISTS {table_name}_authors_index ON {table_name} USING gin(authors)',
+                # f'CREATE INDEX IF NOT EXISTS {table_name}_categories_index ON {table_name} USING gin(categories)',
+                # f'CREATE INDEX IF NOT EXISTS {table_name}_comments_index ON {table_name} USING gin(comments)',
+                # f'CREATE INDEX IF NOT EXISTS {table_name}_created_at_index ON {table_name} (created_at)',
+                # f'CREATE INDEX IF NOT EXISTS {table_name}_doi_index ON {table_name} (doi)',
+                # f'CREATE INDEX IF NOT EXISTS {table_name}_journal_ref_index ON {table_name} (journal_ref)',
+                # f'CREATE INDEX IF NOT EXISTS {table_name}_license_index ON {table_name} (license)',
+                # f'CREATE INDEX IF NOT EXISTS {table_name}_origin_storage_id_index ON {table_name} (origin_storage_id)',
+                # f'CREATE INDEX IF NOT EXISTS {table_name}_report_no_index ON {table_name} (report_no)',
+                # f'CREATE INDEX IF NOT EXISTS {table_name}_submitter_index ON {table_name} USING gin(submitter)',
+                # f'CREATE INDEX IF NOT EXISTS {table_name}_title_index ON {table_name} USING gin(title)',
+                # f'CREATE INDEX IF NOT EXISTS {table_name}_updated_at_index ON {table_name} (updated_at)',
+                # f'CREATE INDEX IF NOT EXISTS {table_name}_versions_index ON {table_name} USING gin(versions)',
+                # f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_hash_index ON {table_name} (hash)',
+                # f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_paper_id_index ON {table_name} (paper_id)',
+                # f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_url_index ON {table_name} (url)',
+                # patch for arxiv dataset
+                # f'ALTER TABLE ts_arxiv ADD COLUMN validated BOOLEAN NOT NULL DEFAULT FALSE;',
+                # f'CREATE INDEX IF NOT EXISTS ts_arxiv_validated_index ON ts_arxiv (validated);',
             ]
         case 'alpha' | 'pd12m':
             list_sql = [
