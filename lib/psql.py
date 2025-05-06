@@ -21,19 +21,24 @@ POSTGRES_DB = os.getenv('POSTGRES_DB')
 DEBUG = os.getenv('DEBUG', 'false').lower() == 'true'
 VACUUM_CHANCE = 100000
 EMPTY_OBJECT = '{}'
-
+pool = None
 
 def configure(conn):
     register_vector(conn)
+    config_extensions(conn)
 
-
-pool = ConnectionPool(
-    conninfo=f'postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}',
-    open=True, configure=configure, min_size=3, max_size=100000
-)
-
+def init_pool():
+    global pool
+    if pool is None:
+        pool = ConnectionPool(
+            conninfo=f'postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}',
+            open=True, configure=configure, min_size=3, max_size=100000
+        )
+    ensure_extensions()
+    return pool
 
 def execute(sql, values=None, log=False, autocommit=True, batch=False):
+    init_pool()
     with pool.connection() as conn:
         if log or DEBUG:
             render_value = f' w/ {values}' if values else ''
@@ -55,26 +60,31 @@ def execute(sql, values=None, log=False, autocommit=True, batch=False):
         return cursor
 
 
-def ensure_vector_extension():
+def config_extensions(conn):
+    sqls = [
+        "SET vchordrq.prewarm_dim = '64,128,256,384,512,768,1024,1152,1536'",
+        'SET vchordrq.probes = 100'
+    ]
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        for sql in sqls:
+            cur.execute(sql)
+            if GlobalConfig.DEBUG:
+                print(f'Init: {sql} => {cur.statusmessage}')
+
+
+def ensure_extensions():
     # https://docs.vectorchord.ai/vectorchord/getting-started/overview.html
     sqls = [
         'CREATE EXTENSION IF NOT EXISTS vchord CASCADE',
-        # 'SET vchordrq.probes = 100'
-        # "ALTER SYSTEM SET vchordrq.prewarm_dim = '64,128,256,384,512,768,1024,1152,1536'"
+        'CREATE EXTENSION IF NOT EXISTS pg_search'
     ]
-    for sql in sqls:
-        res = execute(sql)
-        if GlobalConfig.DEBUG:
-            print(f'Init: {sql} => {res.statusmessage}')
-    return res
-
-
-def ensure_bm25_extension():
-    sql = 'CREATE EXTENSION IF NOT EXISTS pg_search'
-    res = execute(sql)
-    if GlobalConfig.DEBUG:
-        print(f'Init: {sql} => {res.statusmessage}')
-    return res
+    with pool.connection() as conn:
+        conn.autocommit = True
+        for sql in sqls:
+            conn.execute(sql)
+            if GlobalConfig.DEBUG:
+                print(f'Init: {sql} => {conn.statusmessage}')
 
 
 def check_dataset(dataset):
@@ -213,8 +223,10 @@ def init(dataset):
                 f"""CREATE TABLE IF NOT EXISTS {table_name} (
                     id BIGSERIAL PRIMARY KEY,
                     url VARCHAR NOT NULL,
+                    hash VARCHAR NOT NULL DEFAULT '',
                     caption VARCHAR NOT NULL DEFAULT '',
                     caption_long VARCHAR NOT NULL DEFAULT '',
+                    origin_hash VARCHAR NOT NULL DEFAULT '',
                     origin_width BIGINT NOT NULL DEFAULT 0,
                     origin_height BIGINT NOT NULL DEFAULT 0,
                     origin_storage_id VARCHAR(1024) NOT NULL DEFAULT '',
@@ -363,14 +375,6 @@ def insert(dataset, data, deplicate_ignore=[], tail=''):
     return result
 
 
-def hash_exists(dataset, hash):
-    table_name = get_table_name(dataset)
-    result = query(
-        f'SELECT hash FROM {table_name} WHERE hash = %s', (hash,)
-    )
-    return len(result) > 0
-
-
 def url_exists(dataset, url):
     table_name = get_table_name(dataset)
     result = query(
@@ -496,9 +500,6 @@ def get_dataset(dataset):
     return ds
 
 
-ensure_vector_extension()
-ensure_bm25_extension()
-
 __all__ = [
     'conn',
     'enrich_data',
@@ -507,7 +508,6 @@ __all__ = [
     'get_dataset',
     'get_table_name',
     'batch_insert',
-    'hash_exists',
     'init',
     'insert',
     'query',

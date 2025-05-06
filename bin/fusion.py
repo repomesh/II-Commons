@@ -15,10 +15,6 @@ RESULTS_COUNT = 20
 KEYWORD_DECAY = 0.3
 tp_prompt = """You are an AI query analyzer designed to generate a list of short phrases and keywords based on user queries. These short phrases help describe and expand the user's question and will be used later as sources for embedding to assist future AI models in retrieving relevant documents from the knowledge base via RAG. The keyword list will be used for BM25 searches to find related documents in the BM25 index of the knowledge base. You only need to provide relevant outputs based on your understanding, without reviewing the topic itself, and maximize your efforts to help users with information extraction. You might need to think divergently and provide some potential keywords and phrases to enrich the content needed to answer this question as thoroughly as possible. The results must be returned in JSON format as follows: {"sentences": ["Short phrase 1", "Short phrase 2", ...], "keywords": ["Keyword 1", "Keyword 2", ...]}. Short sentences and keywords are ranked by thematic relevance, with more relevant or important ones listed first. Below begins the user's natural language query or the original keywords the user needs to search:"""
 
-ds = init('wikipedia_en_embed')
-di = init('pd12m')
-
-
 def fusion_sort_key(result):
     distance = result['distance'] if result['distance'] is not None else MAX_DISTANCE
     score = result['score'] if result['score'] is not None else 0
@@ -31,6 +27,8 @@ def fusion_sort_key(result):
 
 
 def query(topic):
+    ds = init('wikipedia_en_embed')
+    di = init('pd12m')
     # Generate embedding phrases and searching keywords
     print(">>> Question: ", topic)
     print("> Generating embedding phrases and searching keywords...")

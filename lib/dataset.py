@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-from lib.psql import get_dataset, query
+from lib.psql import enrich_data, get_dataset, query
 from lib.s3 import get_address_by_key
 from lib.utilitas import fetch, sha256
 import json
@@ -249,6 +249,7 @@ def init(name, i2d=False):
         raise Exception(
             f'Only `img2dataset` mode is supported for this dataset: {name}'
         )
+    name = name.lower()
     dataset = get_dataset(name)
     dataset.init()
 
@@ -308,8 +309,11 @@ def init(name, i2d=False):
             'processed_height': 0,
             'aspect_ratio': ratio,
             'exif': {} if mf('exif') is None else json.loads(mf('exif')),
+            'meta': mf('meta', {}),
+            'source': name,
         }
 
+    dataset.name = name
     dataset.map_meta = RULES[name]['fields'] \
         if RULES[name].get('fields').__class__.__name__ == 'function' \
         else map_meta

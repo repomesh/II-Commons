@@ -35,10 +35,10 @@ def cleanup():
 atexit.register(cleanup)
 
 
-def run_worker(worker_name: str, dataset_name: str):
+def run_worker(worker_name: str, dataset_name: str, path: str = None):
     match worker_name:
-        # case 'load':
-        #     run_load_worker(dataset_name)
+        case 'load':
+            run_load_worker(dataset_name, path)
         case 'fetch':
             run_fetch_worker(dataset_name)
         case 'embedding_text':
@@ -60,22 +60,28 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Demo:
-    python -m dataset_tools --dataset dataset_path --name dataset_name
-    python -m dataset_tools --worker worker_name
+    python -m dataset_tools --worker worker_name --name dataset_name --path dataset_path
     python -m dataset_tools --version
         """
     )
 
     parser.add_argument(
-        '-d', '--dataset',
-        help='dataset path: metadata file or directory',
+        '-w', '--worker',
+        help='run worker: load, fetch, embedding_text, embedding_image',
         type=str,
         required=False
     )
 
     parser.add_argument(
-        '-n', '--name',
+        '-d', '--dataset',
         help='dataset name: cc12m, cc12m_cleaned, cc12m_woman, vintage_450k, pd12m, wikipedia_featured, megalith_10m, arxiv',
+        type=str,
+        required=False
+    )
+
+    parser.add_argument(
+        '-p', '--path',
+        help='path: file or directory',
         type=str,
         required=False
     )
@@ -84,13 +90,6 @@ Demo:
         '-r', '--dryrun',
         help='dryrun: dryrun',
         action='store_true',
-        required=False
-    )
-
-    parser.add_argument(
-        '-w', '--worker',
-        help='run worker: load, fetch, embedding_text, embedding_image, caption',
-        type=str,
         required=False
     )
 
@@ -161,7 +160,7 @@ def main() -> Optional[int]:
 
         if args.worker:
             logger.info(f"Run worker: {args.worker}...")
-            run_worker(args.worker, args.name)
+            run_worker(args.worker, args.dataset, args.path)
         elif args.analyze:
             logger.info(f"Run analyze...")
             run_analyze()
