@@ -20,6 +20,7 @@ Then, fill in the required values in the `.env` file.
 -   `MODEL_API_PORT`: The port on which this model server will run. Defaults to `8001`.
 -   `HF_ENDPOINT`: (Optional) The endpoint URL for accessing Hugging Face models, potentially a mirror. Like `https://hf-mirror.com`.
 -   `GEMINI_PROXY`: (Optional) A proxy URL to use for accessing Google Gemini services. Like `http://localhost:2080`.
+-   `NLTK_PROXY`: (Optional) A proxy URL to use for accessing NLTK data. Like `http://localhost:2080`.
 
 ## Running the Server
 

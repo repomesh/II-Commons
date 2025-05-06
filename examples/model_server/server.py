@@ -247,8 +247,9 @@ def rerank(request: RerankRequest):
 def siglip(request: SiglipTextEmbeddingRequest):
     try:
         global siglip_model, siglip_tokenizer
+        queries = list(set([query.strip().lower() for query in request.queries]))
         inputs = siglip_tokenizer(
-            request.queries, padding=True, truncation=True, max_length=64, return_tensors='pt'
+            queries, padding="max_length", truncation=True, max_length=64, return_tensors='pt'
         ).to(device)
         with torch.no_grad():
             text_features = siglip_model.get_text_features(**inputs)

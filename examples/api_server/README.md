@@ -57,8 +57,10 @@ The server is configured using environment variables. A template file `.env.exam
     # Optional NLTK Proxy (if needed for downloading NLTK data behind a proxy)
     NLTK_PROXY="http://your_proxy_host:port"
 
-    # Port for the API server
-    PORT=18889 # Or any port you prefer
+    # Port for the API Server
+    API_SERVER_PORT=8080
+    # Port for the SSE MCP Server
+    API_MCP_SERVER_PORT=8081
     ```
 
 ## Running the Server
@@ -90,10 +92,10 @@ This command starts two processes:
 2.  **Run the container:**
     Make sure your `.env` file is configured correctly in the `examples/api_server` directory.
     ```bash
-    # Replace 18889 with the PORT specified in your .env if different
-    docker run --rm -p 18889:18889 --env-file .env retrieval-api-server
+    # Replace 8080 with the PORT specified in your .env if different
+    docker run --rm -p 8080:8080 --env-file .env retrieval-api-server
     ```
-    This will start the container, and the API server will be accessible on `http://localhost:18889` (or the mapped port) on your host machine. The MCP server will run inside the container on port `PORT + 1`.
+    This will start the container, and the API server will be accessible on `http://localhost:8080` (or the mapped port) on your host machine. The MCP server will run inside the container on port `PORT + 1`.
 
 ## MCP Server
 

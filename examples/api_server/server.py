@@ -18,7 +18,10 @@ class TextRequest(BaseModel):
                 "query": "I want to know information about documentaries related to World War II.",
                 "max_results": 20,
                 "options": {
-                    "rerank": True
+                    "refine_query": True,
+                    "rerank": True,
+                    "vector_weight": 0.6,
+                    "bm25_weight": 0.4
                 },
             }
         }
@@ -33,6 +36,13 @@ class SearchResultImageItem(BaseModel):
     score: float
     url: str
     caption: str
+    processed_storage_id: str
+    aspect_ratio: float
+    exif: dict
+    meta: dict
+    source: List[str]
+    distance: float
+
 class SearchResp(BaseModel):
     results: List[SearchResultTextItem]
     images: List[SearchResultImageItem]
@@ -100,6 +110,7 @@ async def search_text(request: TextRequest):
         return {"results": results, "images": images}
 
     except Exception as e:
+        print(f"Search failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
     
 # Generate an MCP server directly from the FastAPI app
@@ -110,9 +121,9 @@ if __name__ == "__main__":
     import signal
     from multiprocessing import Process
     import uvicorn
-    port = os.getenv("RAG_SERVER_PORT", 8080)
+    port = os.getenv("API_SERVER_PORT", 8080)
     port = int(port)
-    mcp_port = os.getenv("RAG_MCP_SERVER_PORT", port + 1)
+    mcp_port = os.getenv("API_MCP_SERVER_PORT", port + 1)
     mcp_port = int(mcp_port)
 
 
