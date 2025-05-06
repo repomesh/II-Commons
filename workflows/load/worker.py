@@ -6,7 +6,6 @@ import os
 import time
 
 BATCH_SIZE = 1000
-last_item, limit, i = 0, 0, 0
 dataset_name = None
 ds = None
 buffer = []
@@ -65,7 +64,8 @@ def insert_data(args) -> dict:
 
 
 def run(name, meta_path):
-    global i, buffer, ds, dataset_name
+    global buffer, ds, dataset_name
+    last_item, limit = 0, 0
     dataset_name = name
     ds = init(dataset_name)
     meta_files = []

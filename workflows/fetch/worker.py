@@ -11,15 +11,14 @@ import time
 
 WORKER = 'fetch'
 BATCH_SIZE = 100
-limit, i = 0, 0
 dataset_name = None
 ds = None
 buffer = []
 
 
 def get_unprocessed(name):
-    # worker_count, worker_order, _ = heartbeat(f'{WORKER}-{name}')
-    worker_count, worker_order, _ = 1, 0, False
+    worker_count, worker_order, _ = heartbeat(f'{WORKER}-{name}')
+    # worker_count, worker_order, _ = 1, 0, False
     where_conditions = ['origin_storage_id is NULL']
     params = []
     if worker_count > 1:
@@ -120,7 +119,7 @@ def download_data(args) -> dict:
 
 def run(name):
     global buffer, dataset_name, ds
-    i = 0
+    limit, i = 0, 0
     dataset_name = name
     try:
         ds = init(dataset_name)

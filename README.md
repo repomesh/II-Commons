@@ -39,5 +39,5 @@ $ python . -w fetch -d pd12m
 After the data is fetched, we can embed the data using the embedding model.
 
 ```bash
-$ python . -w embed -d pd12m
+$ python . -w embedding_image -d pd12m
 ```

@@ -10,17 +10,14 @@ import sys
 import tempfile
 import time
 
-last_item, limit = 0, 0
+WORKER = 'embedding_image'
 dataset_name = None
 ds = None
 buffer = []
 
 
 def get_unprocessed(name):
-    global last_item
-    worker_count, worker_order, reset = heartbeat(name)
-    if reset:
-        last_item = 0
+    worker_count, worker_order, _ = heartbeat(f'{WORKER}-{name}')
     # worker_count, worker_order = 1, 0
     where_conditions = ['(processed_storage_id = %s OR vector IS NULL)']
     params = ['']
@@ -29,8 +26,8 @@ def get_unprocessed(name):
         params.extend([worker_count, worker_order])
     resp = ds.query(f'SELECT * FROM {ds.get_table_name()}'
                  + ' WHERE ' + ' AND '.join(where_conditions)
-                 + ' AND id > %s ORDER BY id ASC LIMIT %s',
-                 tuple(params + [last_item, BATCH_SIZE]))
+                 + ' ORDER BY id ASC LIMIT %s',
+                 tuple(params + [BATCH_SIZE]))
     res = []
     for item in resp:
         nItem = item.copy()
@@ -130,8 +127,8 @@ def embedding(args) -> dict:
 
 
 def run(name):
-    global buffer, last_item, dataset_name, ds
-    i = 0
+    global buffer, dataset_name, ds
+    limit, i = 0, 0
     dataset_name = name
     try:
         ds = init(dataset_name)
@@ -143,9 +140,8 @@ def run(name):
         should_break = False
         for meta in meta_items:
             i += 1
-            last_item = meta['id']
             meta_snapshot = ds.snapshot(meta)
-            print(f"Processing row {i} - {last_item}: {meta_snapshot}")
+            print(f"Processing row {i} - {meta['id']}: {meta_snapshot}")
             # print(meta)
             meta['hash'] = meta['hash'] if meta.get('hash') else sha256(meta['url'])
             buffer.append({
