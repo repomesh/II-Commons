@@ -7,8 +7,8 @@ from bin.fusion_lite import query as query_lite
 from lib.config import GlobalConfig
 from typing import Optional
 # from workflows.caption import run_host as run_caption_host, run_worker as run_caption_worker
-from workflows.embedding_image import run_worker as run_embedding_image_worker
-from workflows.embedding_text import run_worker as run_embedding_text_worker
+from workflows.embed_image import run_worker as run_embed_image_worker
+from workflows.embed_text import run_worker as run_embed_text_worker
 from workflows.fetch import run_worker as run_fetch_worker
 from workflows.load import run_worker as run_load_worker
 from workflows.validate import run_worker as run_validate_worker
@@ -41,10 +41,10 @@ def run_worker(worker_name: str, dataset_name: str, path: str = None):
             run_load_worker(dataset_name, path)
         case 'fetch':
             run_fetch_worker(dataset_name)
-        case 'embedding_text':
-            run_embedding_text_worker(dataset_name)
-        case 'embedding_image':
-            run_embedding_image_worker(dataset_name)
+        case 'embed_text':
+            run_embed_text_worker(dataset_name)
+        case 'embed_image':
+            run_embed_image_worker(dataset_name)
         case 'validate':
             run_validate_worker(dataset_name)
         # case 'caption':
@@ -67,7 +67,7 @@ Demo:
 
     parser.add_argument(
         '-w', '--worker',
-        help='run worker: load, fetch, embedding_text, embedding_image',
+        help='run worker: load, fetch, embed_text, embed_image',
         type=str,
         required=False
     )

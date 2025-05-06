@@ -10,7 +10,7 @@ import sys
 import tempfile
 import time
 
-WORKER = 'embedding_image'
+WORKER = 'embed_image'
 dataset_name = None
 ds = None
 buffer = []
