@@ -36,8 +36,8 @@ $ python . -w fetch -d pd12m
 
 ### Embed Image in a Dataset
 
-After the data items are fetched, we can embed the data using the embedding model.
+After the data items are fetched, we can embed the images.
 
 ```bash
-$ python . -w embedding_image -d pd12m
+$ python . -w embed_image -d pd12m
 ```
