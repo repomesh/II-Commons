@@ -19,8 +19,10 @@ buffer = []
 def get_unprocessed(name):
     worker_count, worker_order, _ = heartbeat(f'{WORKER}-{name}')
     # worker_count, worker_order = 1, 0
-    where_conditions = ['(processed_storage_id = %s OR vector IS NULL)']
-    params = ['']
+    where_conditions = [
+        '(origin_storage_id IS NOT NULL AND origin_storage_id != %s)',
+        '(processed_storage_id = %s OR vector IS NULL)']
+    params = ['', '']
     if worker_count > 1:
         where_conditions.append('id %% %s = %s')
         params.extend([worker_count, worker_order])
