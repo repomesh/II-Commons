@@ -1,8 +1,8 @@
-# II Dataset Tools
+# Chipmunk
 
 ![image](https://github.com/user-attachments/assets/eb5ea0c1-17e4-4b2a-bccb-48dcb20b4344)
 
-This repository contains tools for managing text and image datasets, including loading, fetching, and embedding large datasets.
+This repository `Chipmunk` contains tools for managing text and image datasets, including loading, fetching, and embedding large datasets.
 
 The dataset processed by these tools are suitable for model training, fine-tuning, RAG, and other applications.
 
