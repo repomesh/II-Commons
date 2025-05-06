@@ -121,9 +121,9 @@ if __name__ == "__main__":
     import signal
     from multiprocessing import Process
     import uvicorn
-    port = os.getenv("RAG_SERVER_PORT", 8080)
+    port = os.getenv("API_SERVER_PORT", 8080)
     port = int(port)
-    mcp_port = os.getenv("RAG_MCP_SERVER_PORT", port + 1)
+    mcp_port = os.getenv("API_MCP_SERVER_PORT", port + 1)
     mcp_port = int(mcp_port)
 
 
