@@ -12,6 +12,10 @@ $ cd dataset-tools
 $ pip install -r requirements.txt
 ```
 
+## Configuration
+
+Create a `.env` file from [sample.env](./sample.env) and configure the necessary parameters.
+
 ## Usage
 
 ### Load metadata to Database
