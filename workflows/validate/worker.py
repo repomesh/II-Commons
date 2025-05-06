@@ -20,7 +20,7 @@ def get_unprocessed():
     # worker_count, worker_order = 1, 0
     where_conditions = ['validated = FALSE']
     params = []
-    if worker_count > 1 and worker_order > 0:
+    if worker_count > 1:
         where_conditions.append('id %% %s = %s')
         params.extend([worker_count, worker_order])
     resp = ds.query(f'SELECT * FROM {ds.get_table_name()}'

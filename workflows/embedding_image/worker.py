@@ -21,10 +21,10 @@ def get_unprocessed(name):
     worker_count, worker_order, reset = heartbeat(name)
     if reset:
         last_item = 0
-    worker_count, worker_order = 1, 0
+    # worker_count, worker_order = 1, 0
     where_conditions = ['(processed_storage_id = %s OR vector IS NULL)']
     params = ['']
-    if worker_count > 1 and worker_order > 0:
+    if worker_count > 1:
         where_conditions.append('id %% %s = %s')
         params.extend([worker_count, worker_order])
     resp = ds.query(f'SELECT * FROM {ds.get_table_name()}'

@@ -3,7 +3,6 @@ from lib.dataset import init
 from lib.meta import parse_jsonl, parse_dict_parquet, parse_wiki_featured, parse_tube_parquet
 from lib.psql import batch_insert, enrich_data
 import os
-import sys
 import time
 
 BATCH_SIZE = 1000
@@ -30,9 +29,9 @@ def sleep(seconds=1):
 
 def insert_data(args) -> dict:
     sql = f"""INSERT INTO {ds.get_table_name()} (url, hash, caption,
-        caption_long, origin_hash, origin_width, origin_height,
-        origin_storage_id, exif, meta, source) VALUES (%s, %s, %s, %s, %s, %s,
-        %s, %s, %s, %s, %s) ON CONFLICT (url) DO NOTHING"""
+        caption_long, origin_hash, origin_width, origin_height, exif, meta,
+        source) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (url) DO NOTHING"""
     meta_items = args['meta_items'] if type(args['meta_items']) == list \
         else [args['meta_items']]
     urls = []
@@ -54,7 +53,6 @@ def insert_data(args) -> dict:
                 meta['origin_hash'],
                 meta['origin_width'],
                 meta['origin_height'],
-                meta['origin_storage_id'],
                 meta['exif'],
                 meta['meta'],
                 meta['source'],

@@ -1,4 +1,5 @@
 from lib.config import GlobalConfig
+from lib.coordination import heartbeat
 from lib.dataset import init
 from lib.gcs import download_file
 from lib.s3 import exists, get_address_by_key, upload_file
@@ -8,23 +9,26 @@ import sys
 import tempfile
 import time
 
-BATCH_SIZE = 1
-last_item, limit, i = 0, 0, 0
+WORKER = 'fetch'
+BATCH_SIZE = 100
+limit, i = 0, 0
 dataset_name = None
 ds = None
 buffer = []
 
 
-def get_unprocessed(limit=10, offset=0, mod_by=None, mod_remain=None):
-    where_conditions = ['origin_storage_id = %s']
-    params = ['']
-    if mod_by is not None and mod_remain is not None:
+def get_unprocessed(name):
+    # worker_count, worker_order, _ = heartbeat(f'{WORKER}-{name}')
+    worker_count, worker_order, _ = 1, 0, False
+    where_conditions = ['origin_storage_id is NULL']
+    params = []
+    if worker_count > 1:
         where_conditions.append('id %% %s = %s')
-        params.extend([mod_by, mod_remain])
+        params.extend([worker_count, worker_order])
     resp = ds.query(f'SELECT * FROM {ds.get_table_name()}'
                  + ' WHERE ' + ' AND '.join(where_conditions)
-                 + ' AND id > %s ORDER BY id ASC LIMIT %s',
-                 tuple(params + [offset, limit]))
+                 + ' ORDER BY id ASC LIMIT %s',
+                 tuple(params + [BATCH_SIZE]))
     res = []
     for item in resp:
         nItem = item.copy()
@@ -101,20 +105,21 @@ def download_data(args) -> dict:
                         print(f"Downloaded {meta['url']} to: {filename}")
                         meta['origin_storage_id'] = upload_file(filename, s3_key)
                         print(f"Uploaded to S3: {meta['origin_storage_id']}")
-            ds.update_by_id(meta['id'], {
-                'origin_storage_id': meta['origin_storage_id'],
-            })
-            print(f'🔥 Inserted meta: {snapshot}')
         except Exception as e:
             print(f'❌ Error handling {snapshot}: {e}')
+            meta['origin_storage_id'] = ''
             continue
+        ds.update_by_id(meta['id'], {
+            'origin_storage_id': meta['origin_storage_id'],
+        })
+        print(f'🔥 Inserted meta: {snapshot}')
         results.append(meta)
     print('👌 Done!')
     return {'meta_items': results}
 
 
 def run(name):
-    global buffer, last_item, dataset_name, ds
+    global buffer, dataset_name, ds
     i = 0
     dataset_name = name
     try:
@@ -122,14 +127,13 @@ def run(name):
     except Exception as e:
         print(f"❌ Unable to init src-dataset: {dataset_name}. Error: {e}")
         sys.exit(1)
-    meta_items = get_unprocessed()
+    meta_items = get_unprocessed(name)
     while len(meta_items) > 0:
         should_break = False
         for meta in meta_items:
             i += 1
-            last_item = meta['id']
             meta_snapshot = ds.snapshot(meta)
-            print(f"Processing row {i} - {last_item}: {meta_snapshot}")
+            print(f"Processing row {i} - {meta['id']}: {meta_snapshot}")
             # print(meta)
             buffer.append(meta)
             trigger()
@@ -138,7 +142,7 @@ def run(name):
                 break
         if should_break:
             break
-        meta_items = get_unprocessed()
+        meta_items = get_unprocessed(name)
     trigger(force=True)
     print('All Done!')
 

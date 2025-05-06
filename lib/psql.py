@@ -229,7 +229,7 @@ def init(dataset):
                     origin_hash VARCHAR NOT NULL DEFAULT '',
                     origin_width BIGINT NOT NULL DEFAULT 0,
                     origin_height BIGINT NOT NULL DEFAULT 0,
-                    origin_storage_id VARCHAR(1024) NOT NULL DEFAULT '',
+                    origin_storage_id VARCHAR(1024) DEFAULT NULL,
                     processed_storage_id VARCHAR(1024) NOT NULL DEFAULT '',
                     processed_width BIGINT NOT NULL DEFAULT 0,
                     processed_height BIGINT NOT NULL DEFAULT 0,
