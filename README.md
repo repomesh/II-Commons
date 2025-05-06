@@ -1,4 +1,4 @@
-# Chipmunk
+# 🐿️ Chipmunk
 
 <img src="https://github.com/user-attachments/assets/eb5ea0c1-17e4-4b2a-bccb-48dcb20b4344" alt="Chipmunk" width="400">
 
@@ -18,11 +18,13 @@ $ pip install -r requirements.txt
 
 Create a `.env` file from [sample.env](./sample.env) and configure the necessary parameters.
 
-## Usage
+## Usage for Image Dataset
+
+`Chipmunk` supports multiple image datasets, for example [PD12M](https://huggingface.co/datasets/Spawning/PD12M), CC12M, and so on. It also supports custom datasets in parquet, jsonl, or csv format. In this demonstration, we will use the [first 100,000 entries from PD12M](https://huggingface.co/datasets/Spawning/PD12M/tree/main/metadata?show_file_info=metadata%2Fpd12m.000.parquet) for the sake of speed.
 
 ### Load Metadata to Database
 
-First the dataset meta must be loaded into the database. For this demonstration, we will use the [first 100,000 entries from PD12M](https://huggingface.co/datasets/Spawning/PD12M/tree/main/metadata?show_file_info=metadata%2Fpd12m.000.parquet) for the sake of speed.
+First the dataset meta must be loaded into the database.
 
 ```bash
 $ python . -w load -d pd12m -p ./meta/PD12M/metadata
