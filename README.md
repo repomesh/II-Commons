@@ -1,6 +1,6 @@
 # Chipmunk
 
-<img src="https://github.com/user-attachments/assets/eb5ea0c1-17e4-4b2a-bccb-48dcb20b4344" alt="Chipmunk" style="max-width: 400px;">
+<img src="https://github.com/user-attachments/assets/eb5ea0c1-17e4-4b2a-bccb-48dcb20b4344" alt="Chipmunk" width="400">
 
 This repository `Chipmunk` contains tools for managing text and image datasets, including loading, fetching, and embedding large datasets.
 
