@@ -260,6 +260,8 @@ def init(name, i2d=False):
             )
         subfix = 'jpg'
         match name:
+            case 'wikipedia_en':
+                subfix = 'json'
             case 'arxiv':
                 subfix = 'pdf'
         return os.path.join(

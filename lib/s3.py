@@ -52,6 +52,17 @@ def upload_file(filename, s3_key):
     return get_address_by_key(s3_key)
 
 
+def put(body, s3_key):
+    s3_key = ensure_key(s3_key)
+    s3.put_object(
+        Bucket=S3_BUCKET,
+        Key=s3_key,
+        Body=body,
+        ContentType='application/json'
+    )
+    return get_address_by_key(s3_key)
+
+
 def head(s3_key):
     return s3.head_object(Bucket=S3_BUCKET, Key=s3_key)
 
@@ -72,6 +83,7 @@ __all__ = [
     'get_key_by_address',
     'get_url_by_key',
     'head',
+    'put',
     's3',
     'upload_file',
 ]

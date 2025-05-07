@@ -45,3 +45,7 @@ After the data items are fetched, we can embed the images.
 ```bash
 $ python . -w embed_image -d pd12m
 ```
+
+```bash
+$ python . -w load -d wikipedia_en -p ./meta/wikipedia_en
+```

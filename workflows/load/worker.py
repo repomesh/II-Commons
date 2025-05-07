@@ -1,3 +1,4 @@
+from .wikipedia import load as load_wikipedia
 from lib.config import GlobalConfig
 from lib.dataset import init
 from lib.meta import parse_jsonl, parse_dict_parquet, parse_wiki_featured, parse_tube_parquet
@@ -68,6 +69,9 @@ def run(name, meta_path):
     last_item, limit = 0, 0
     dataset_name = name
     ds = init(dataset_name)
+    match name:
+        case 'wikipedia_en':
+            return load_wikipedia(ds, meta_path)
     meta_files = []
     if os.path.isdir(meta_path):
         for meta_file in sorted(os.listdir(meta_path)):

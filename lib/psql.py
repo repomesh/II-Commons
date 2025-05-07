@@ -2,6 +2,7 @@ from lib.config import GlobalConfig
 from lib.embedding import DIMENSION
 from lib.utilitas import Empty
 from lib.s3 import get_url_by_key
+from lib import logger
 from pgvector.psycopg import register_vector
 from psycopg_pool import ConnectionPool
 from psycopg.types.json import Jsonb
@@ -34,7 +35,7 @@ def init_pool():
     if pool is None:
         pool = ConnectionPool(
             conninfo=f'postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}',
-            open=True, configure=configure, min_size=3, max_size=100000
+            open=True, configure=configure, min_size=3, max_size=1000
         )
     ensure_extensions()
     return pool
@@ -45,7 +46,7 @@ def execute(sql, values=None, log=False, autocommit=True, batch=False):
     with pool.connection() as conn:
         if log or DEBUG:
             render_value = f' w/ {values}' if values else ''
-            print(f'Executing: {sql}{render_value}')
+            logger.info(f'Executing: {sql}{render_value}')
         str_time = time.time()
         if batch:
             conn.autocommit = False
@@ -59,7 +60,8 @@ def execute(sql, values=None, log=False, autocommit=True, batch=False):
             conn.commit()
         end_time = time.time()
         if log or DEBUG:
-            print(f'>>> Execution time: {end_time - str_time:.2f} seconds.')
+            logger.info(
+                f'>>> Execution time: {end_time - str_time:.2f} seconds.')
         return cursor
 
 
@@ -73,7 +75,7 @@ def config_extensions(conn):
         for sql in sqls:
             cur.execute(sql)
             if GlobalConfig.DEBUG:
-                print(f'Init: {sql} => {cur.statusmessage}')
+                logger.info(f'Init: {sql} => {cur.statusmessage}')
 
 
 def ensure_extensions():
@@ -87,7 +89,7 @@ def ensure_extensions():
         for sql in sqls:
             conn.execute(sql)
             if GlobalConfig.DEBUG:
-                print(f'Init: {sql} => {conn.statusmessage}')
+                logger.info(f'Init: {sql} => {conn.statusmessage}')
 
 
 def check_dataset(dataset):
@@ -335,7 +337,7 @@ def init(dataset):
         res = execute(sql)
         result.append(res)
         if GlobalConfig.DEBUG:
-            print(f'Init: {sql} => {res.statusmessage}')
+            logger.info(f'Init: {sql} => {res.statusmessage}')
     return result
 
 
@@ -437,7 +439,7 @@ def update_by_id(dataset, id, data, deplicate_ignore=[], tail=''):
         except UniqueViolation as e:
             err = e
             if deplicate_ignore:
-                print(e)
+                logger.exception(e)
             else:
                 raise e
         except Exception as e:
