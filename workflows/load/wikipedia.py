@@ -115,7 +115,7 @@ def insert_records_batch(records):
     batch_insert(insert_query, records)
 
 
-def main():
+def load_wikipedia():
     """Main function to orchestrate the processing"""
     start_time = datetime.now()
     logger.info(f"Starting Wikipedia data processing at {start_time}")
@@ -158,5 +158,6 @@ def main():
     logger.info(f"Total records processed: {total_processed}")
 
 
-if __name__ == "__main__":
-    main()
+__all__ = [
+    'load_wikipedia'
+]
