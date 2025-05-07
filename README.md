@@ -24,7 +24,7 @@ Be sure to configure the `POSTGRES` and `S3` related environment variables. Most
 
 `Chipmunk` supports multiple image datasets, for example [PD12M](https://huggingface.co/datasets/Spawning/PD12M), CC12M, and so on. It also supports custom datasets in parquet, jsonl, or csv format. In this demonstration, we will use the [first 100,000 entries from PD12M](https://huggingface.co/datasets/Spawning/PD12M/tree/main/metadata?show_file_info=metadata%2Fpd12m.000.parquet) for the sake of speed.
 
-### Load Metadata to Database
+### 1.Load Metadata to Database
 
 First the dataset meta must be loaded into the database.
 
@@ -32,7 +32,7 @@ First the dataset meta must be loaded into the database.
 $ python . -w load -d pd12m -p ./meta/PD12M/metadata
 ```
 
-### Fetch Data from Source
+### 2. Fetch Data from Source
 
 Then we need to fetch raw data items and save them to object storage. It supports [S3](https://aws.amazon.com/s3/) and S3-compatible object storage services. For local deployments, [SeaweedFS](https://github.com/seaweedfs/seaweedfs) is recommended.
 
@@ -40,7 +40,7 @@ Then we need to fetch raw data items and save them to object storage. It support
 $ python . -w fetch -d pd12m
 ```
 
-### Embed Images in a Dataset
+### 3. Embed Images in a Dataset
 
 After the data items are fetched, we can embed the images.
 
@@ -52,13 +52,13 @@ $ python . -w embed_image -d pd12m
 
 `Chipmunk` is designed to support text based datasets like wikipedia, arXiv and so on. We will use the [wikipedia_en](https://huggingface.co/datasets/Spawning/wikipedia_en) dataset for demonstration. Full support for arXiv is coming soon.
 
-## Get the Raw Dataset
+## 1. Get the Raw Dataset
 
 Navigate to the [wikipedia dump](https://dumps.wikimedia.org/enwiki/20250501/) directory. Download the dump file `pages-articles-multistream` in `xml.bz2` format, like [enwiki-20250501-pages-articles-multistream.xml.bz2](https://dumps.wikimedia.org/enwiki/20250501/enwiki-20250501-pages-articles-multistream.xml.bz2). Extract the `xml` file from the `bz2` archive.
 
 You can use the sample mini dataset for testing, jump to the [Load the Dataset to Database](#load-the-dataset-to-database) section.
 
-## Extract Pages from the Raw Dataset
+## 2. Extract Pages from the Raw Dataset
 
 The best way to extract pages from the raw dataset is to use the [wikiextractor](https://github.com/attardi/wikiextractor) tool.
 
@@ -72,7 +72,7 @@ Extract pages with links if you need.
 $ wikiextractor enwiki-20250501-pages-articles-multistream.xml --json --no-templates--links -o /path/to/wikipedia_en
 ```
 
-## Load the Dataset to Database
+## 3. Load the Dataset to Database
 
 This step will analyze all the pages extracted from the raw dataset, upload them to the object storage, and save the metadata to the database.
 
@@ -80,7 +80,7 @@ This step will analyze all the pages extracted from the raw dataset, upload them
 $ python . -w load -d wikipedia_en -p ./meta/wikipedia_en
 ```
 
-## Split Pages into Chunks, and Embed the Chunks
+## 4. Split Pages into Chunks, and Embed the Chunks
 
 This step will split the pages into chunks of a certain size, save the chunks to the chunking database, and embed the chunks.
 
