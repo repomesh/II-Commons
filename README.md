@@ -20,7 +20,7 @@ Create a `.env` file from [sample.env](./sample.env) and configure the necessary
 
 Be sure to configure the `POSTGRES` and `S3` related environment variables. Most of the features are dependent on them.
 
-## Usage for Text Dataset
+## Usage for Image Dataset
 
 `Chipmunk` supports multiple image datasets, for example [PD12M](https://huggingface.co/datasets/Spawning/PD12M), CC12M, and so on. It also supports custom datasets in parquet, jsonl, or csv format. In this demonstration, we will use the [first 100,000 entries from PD12M](https://huggingface.co/datasets/Spawning/PD12M/tree/main/metadata?show_file_info=metadata%2Fpd12m.000.parquet) for the sake of speed.
 
@@ -40,7 +40,15 @@ Then we need to fetch raw data items and save them to object storage. It support
 $ python . -w fetch -d pd12m
 ```
 
-### Embed Text in a Dataset
+### Embed Images in a Dataset
+
+After the data items are fetched, we can embed the images.
+
+```bash
+$ python . -w embed_image -d pd12m
+```
+
+## Usage for Text Dataset
 
 `Chipmunk` is designed to support text based datasets like wikipedia, arXiv and so on. We will use the [wikipedia_en](https://huggingface.co/datasets/Spawning/wikipedia_en) dataset for demonstration. Full support for arXiv is coming soon.
 
@@ -70,4 +78,12 @@ This step will analyze all the pages extracted from the raw dataset, upload them
 
 ```bash
 $ python . -w load -d wikipedia_en -p ./meta/wikipedia_en
+```
+
+## Split Pages into Chunks, and Embed the Chunks
+
+This step will split the pages into chunks of a certain size, save the chunks to the chunking database, and embed the chunks.
+
+```bash
+$ python . -w embed_text -d wikipedia_en
 ```

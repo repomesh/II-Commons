@@ -11,32 +11,26 @@ import tempfile
 import time
 
 BATCH_SIZE = 30
-last_item, limit = 0, 0
+limit = 0
 src_ds, dst_ds = None, None
 buffer = []
 chunked = False
 
 
 def get_unprocessed(name):
-    global last_item
-    worker_count, worker_order, reset = heartbeat(name)
-    # worker_count, worker_order, reset = 1, 0, False
-    if reset:
-        last_item = 0
-    # worker_count, worker_order = 1, 0
+    worker_count, worker_order, _ = heartbeat(name)
+    # worker_count, worker_order, _ = 1, 0, False
     # start_time = time.time()
     resp = src_ds.query(
         f"SELECT id, chunk_text FROM {src_ds.get_table_name()}"
-        + ' WHERE id %% %s = %s AND id > %s AND vector IS NULL'
-        + ' ORDER BY id ASC LIMIT %s',
-        (worker_count, worker_order, last_item, BATCH_SIZE)
+        + ' WHERE id %% %s = %s AND vector IS NULL ORDER BY id ASC LIMIT %s',
+        (worker_count, worker_order, BATCH_SIZE)
     ) if chunked else src_ds.query(
         f"SELECT id, origin_storage_id FROM {src_ds.get_table_name()} t"
         + f' WHERE NOT EXISTS (SELECT 1 from {dst_ds.get_table_name()} s'
-        + ' WHERE s.source_id = t.id) AND id %% %s = %s AND id > %s'
-        + ' AND t.ignored = FALSE'
+        + ' WHERE s.source_id = t.id) AND id %% %s = %s AND t.ignored = FALSE'
         + ' ORDER BY id ASC LIMIT %s',
-        (worker_count, worker_order, last_item, BATCH_SIZE)
+        (worker_count, worker_order, BATCH_SIZE)
     )
     # print(
     #     f'Fetching {BATCH_SIZE} rows took {time.time() - start_time:.2f} seconds.'
@@ -65,7 +59,8 @@ def embedding(args) -> dict:
     temp_path = tempfile.TemporaryDirectory(suffix=f'-{task_hash}')
     texts = []
     for meta in meta_items:
-        snapshot = f"{dst_ds.get_table_name()}/{meta['id']}" if chunked else src_ds.snapshot(meta)
+        snapshot = f"{dst_ds.get_table_name()}/{meta['id']}" \
+            if chunked else src_ds.snapshot(meta)
         print(f'✨ Processing item: {snapshot}')
         if chunked:
             texts.append({
@@ -93,8 +88,12 @@ def embedding(args) -> dict:
     for txt in [texts] if chunked else texts:
         try:
             print('Embedding Documents...')
-            snapshot = json_dumps([x['id'] for x in txt]) if chunked else txt['id']
-            end_res = encode([x['text'] for x in txt]) if chunked else process([txt['text']])
+            snapshot = json_dumps([
+                x['id'] for x in txt
+            ]) if chunked else txt['id']
+            end_res = encode([
+                x['text'] for x in txt
+            ]) if chunked else process([txt['text']])
         except Exception as e:
             print(f'❌ ({snapshot}) Error embedding: {e}')
             continue
@@ -142,7 +141,8 @@ def embedding(args) -> dict:
                 db_insert_time = time.time() - db_insert_time
                 items_count = len(txt) if chunked else len(items)
                 print(
-                    f'🔥 ({snapshot}) Updated meta: {items_count} items in {db_insert_time:.2f} seconds'
+                    f'🔥 ({snapshot}) Updated meta: {items_count} items in '
+                    + f'{db_insert_time:.2f} seconds'
                 )
                 if not chunked:
                     del txt['meta']
@@ -158,7 +158,7 @@ def embedding(args) -> dict:
 
 
 def run(name):
-    global buffer, last_item, src_ds, dst_ds, chunked
+    global buffer, src_ds, dst_ds, chunked
     match name:
         case 'wikipedia_en':
             target_db = f'{name}_embed'
@@ -185,15 +185,13 @@ def run(name):
     i, last_i = 0, -1
     while i > last_i:
         last_i = i
-        last_item = 0
         should_break = False
         meta_items = get_unprocessed(name)
         while len(meta_items) > 0:
             for meta in meta_items:
                 i += 1
-                last_item = meta['id']
                 meta_snapshot = src_ds.snapshot(meta)
-                # print(f"👀 Reading row {i} - {last_item}: {meta_snapshot}")
+                # print(f"👀 Reading row {i} - {meta['id']}: {meta_snapshot}")
                 # print(meta)
                 _id = meta.get('origin_storage_id', str(meta['id']))
                 buffer.append({
