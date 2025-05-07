@@ -23,9 +23,11 @@ VACUUM_CHANCE = 100000
 EMPTY_OBJECT = '{}'
 pool = None
 
+
 def configure(conn):
     register_vector(conn)
     config_extensions(conn)
+
 
 def init_pool():
     global pool
@@ -36,6 +38,7 @@ def init_pool():
         )
     ensure_extensions()
     return pool
+
 
 def execute(sql, values=None, log=False, autocommit=True, batch=False):
     init_pool()
@@ -144,7 +147,13 @@ def init(dataset):
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )""",
+                f'CREATE INDEX IF NOT EXISTS {table_name}_revid_index ON {table_name} (revid)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_url_index ON {table_name} (url)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_title_index ON {table_name} (title)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_origin_storage_id_index ON {table_name} (origin_storage_id)',
                 f'CREATE INDEX IF NOT EXISTS {table_name}_ignored_index ON {table_name} (ignored)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_created_at_index ON {table_name} (created_at)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_updated_at_index ON {table_name} (updated_at)',
             ]
             init('wikipedia_en_embed')
         case 'wikipedia_en_embed' | 'ms_marco_embed':
