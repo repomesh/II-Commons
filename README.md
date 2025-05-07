@@ -52,13 +52,13 @@ $ python . -w embed_image -d pd12m
 
 `Chipmunk` is designed to support text based datasets like wikipedia, arXiv and so on. We will use the [wikipedia_en](https://huggingface.co/datasets/Spawning/wikipedia_en) dataset for demonstration. Full support for arXiv is coming soon.
 
-## 1. Get the Raw Dataset
+### 1. Get the Raw Dataset
 
 Navigate to the [wikipedia dump](https://dumps.wikimedia.org/enwiki/20250501/) directory. Download the dump file `pages-articles-multistream` in `xml.bz2` format, like [enwiki-20250501-pages-articles-multistream.xml.bz2](https://dumps.wikimedia.org/enwiki/20250501/enwiki-20250501-pages-articles-multistream.xml.bz2). Extract the `xml` file from the `bz2` archive.
 
 You can use the sample mini dataset for testing, jump to the [Load the Dataset to Database](#load-the-dataset-to-database) section.
 
-## 2. Extract Pages from the Raw Dataset
+### 2. Extract Pages from the Raw Dataset
 
 The best way to extract pages from the raw dataset is to use the [wikiextractor](https://github.com/attardi/wikiextractor) tool.
 
@@ -72,7 +72,7 @@ Extract pages with links if you need.
 $ wikiextractor enwiki-20250501-pages-articles-multistream.xml --json --no-templates--links -o /path/to/wikipedia_en
 ```
 
-## 3. Load the Dataset to Database
+### 3. Load the Dataset to Database
 
 This step will analyze all the pages extracted from the raw dataset, upload them to the object storage, and save the metadata to the database.
 
@@ -80,7 +80,7 @@ This step will analyze all the pages extracted from the raw dataset, upload them
 $ python . -w load -d wikipedia_en -p ./meta/wikipedia_en
 ```
 
-## 4. Split Pages into Chunks, and Embed the Chunks
+### 4. Split Pages into Chunks, and Embed the Chunks
 
 This step will split the pages into chunks of a certain size, save the chunks to the chunking database, and embed the chunks.
 
