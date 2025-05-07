@@ -24,7 +24,7 @@ Be sure to configure the `POSTGRES` and `S3` related environment variables. Most
 
 `Chipmunk` supports multiple image datasets, for example [PD12M](https://huggingface.co/datasets/Spawning/PD12M), CC12M, and so on. It also supports custom datasets in parquet, jsonl, or csv format. In this demonstration, we will use the [first 100,000 entries from PD12M](https://huggingface.co/datasets/Spawning/PD12M/tree/main/metadata?show_file_info=metadata%2Fpd12m.000.parquet) for the sake of speed.
 
-### 1.Load Metadata to Database
+### 1. Load Metadata to Database
 
 First the dataset meta must be loaded into the database.
 
