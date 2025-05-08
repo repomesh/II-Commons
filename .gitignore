@@ -172,5 +172,5 @@ cython_debug/
 /models/*
 !/models/.gitkeep
 !/models/*.sh
-!/meta/*
+!/meta/PD12M/metadata/*.parquet
 # }
