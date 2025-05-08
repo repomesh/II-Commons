@@ -51,7 +51,7 @@ $ python . -w embed_image -d pd12m
 
 ## Usage for Text Dataset
 
-`Chipmunk` is designed to support text based datasets like wikipedia, arXiv and so on. We will use the [wikipedia_en](https://huggingface.co/datasets/Spawning/wikipedia_en) dataset for demonstration. Full support for arXiv is coming soon.
+`Chipmunk` is designed to support text based datasets like wikipedia, arXiv and so on. We will use the [Wikipedia English](https://dumps.wikimedia.org/) dataset for demonstration. Full support for arXiv is coming soon.
 
 ### 1. Get the Raw Dataset
 
