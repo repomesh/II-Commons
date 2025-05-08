@@ -93,7 +93,7 @@ def embedding(args) -> dict:
             ]) if chunked else txt['id']
             end_res = encode([
                 x['text'] for x in txt
-            ]) if chunked else process([txt['text']])
+            ]) if chunked else process(txt['text'])
         except Exception as e:
             print(f'❌ ({snapshot}) Error embedding: {e}')
             continue
