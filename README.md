@@ -2,7 +2,7 @@
 
 <img src="https://github.com/user-attachments/assets/eb5ea0c1-17e4-4b2a-bccb-48dcb20b4344" alt="Chipmunk" width="400">
 
-This repository `Chipmunk` contains tools for managing text and image datasets, including loading, fetching, and embedding large datasets.
+This repository [Chipmunk](https://en.wikipedia.org/wiki/Chipmunk) contains tools for managing text and image datasets, including loading, fetching, and embedding large datasets.
 
 The dataset processed by these tools are suitable for model training, fine-tuning, RAG, and other applications.
 
@@ -18,11 +18,12 @@ $ pip install -r requirements.txt
 
 Create a `.env` file from [sample.env](./sample.env) and configure the necessary parameters.
 
-Be sure to configure the `POSTGRES` and `S3` related environment variables. Most of the features are dependent on them.
+Be sure to configure the [PostgreSQL](https://www.postgresql.org/) and [S3](https://aws.amazon.com/s3/) related environment variables. Most of the features are dependent on them.
 
 ## Usage for Image Dataset
 
-`Chipmunk` supports multiple image datasets, for example [PD12M](https://huggingface.co/datasets/Spawning/PD12M), CC12M, and so on. It also supports custom datasets in parquet, jsonl, or csv format. In this demonstration, we will use the [first 100,000 entries from PD12M](https://huggingface.co/datasets/Spawning/PD12M/tree/main/metadata?show_file_info=metadata%2Fpd12m.000.parquet) for the sake of speed.
+`Chipmunk` supports multiple image datasets, for example [PD12M](https://huggingface.co/datasets/Spawning/PD12M), [CC12M](https://github.com/google-research-datasets/conceptual-12m), [
+cc12m-cleaned](https://huggingface.co/datasets/opendiffusionai/cc12m-cleaned), and so on. It also supports custom datasets in parquet, jsonl, or csv format. In this demonstration, we will use the [first 100,000 entries from PD12M](https://huggingface.co/datasets/Spawning/PD12M/tree/main/metadata?show_file_info=metadata%2Fpd12m.000.parquet) for the sake of speed.
 
 ### 1. Load Metadata to Database
 
