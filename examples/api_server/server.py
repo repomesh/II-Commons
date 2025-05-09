@@ -26,6 +26,25 @@ class TextRequest(BaseModel):
             }
         }
 
+class ImageRequest(BaseModel):
+    image_url: str
+    max_results: int = 20
+    options: handler.QueryConfiguration = handler.QueryConfiguration()
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "query": "I want to know information about documentaries related to World War II.",
+                "max_results": 20,
+                "options": {
+                    "refine_query": True,
+                    "rerank": True,
+                    "vector_weight": 0.6,
+                    "bm25_weight": 0.4
+                },
+            }
+        }
+
 class SearchResultTextItem(BaseModel):
     score: float
     url: str
@@ -112,6 +131,29 @@ async def search_text(request: TextRequest):
     except Exception as e:
         print(f"Search failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+@app.post("/search_image", response_model=SearchResp, tags=["Search"], operation_id="cg_search_image")
+async def search_image(request: ImageRequest):
+    """
+    Seek common ground knowledge using an image query.
+
+    Args:
+        request (ImageRequest): The search request containing image URL and pagination parameters
+
+    Returns:
+        dict: Search results containing similar images with their metadata
+
+    Raises:
+        HTTPException: If services are not initialized or search fails
+    """
+    try:
+        # Generate embedding for the input image
+        results, images = await handler.image_query(request.image_url, request.max_results, request.options)
+        return {"results": results, "images": images}
+
+    except Exception as e:
+        print(f"Image search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Image search failed: {str(e)}")
     
 # Generate an MCP server directly from the FastAPI app
 mcp_server = FastMCP.from_fastapi(app)

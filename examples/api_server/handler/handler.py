@@ -435,6 +435,15 @@ async def query(topic, max_results=100, config=QueryConfiguration()):
         row["score"] = row.get("rank_score", 0)
     return m_res, is_res
 
+async def image_query(image_url: str, max_results: int, config: QueryConfiguration):
+    """
+    Stub for image query functionality.
+    """
+    print(f"Image query received for URL: {image_url}, max_results: {max_results}, config: {config}")
+    # Placeholder: Implement actual image query logic here
+    # For now, returning empty lists as per the stub requirement
+    return [], []
+
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
