@@ -5,6 +5,7 @@ import asyncio
 import time
 import functools
 from pydantic import BaseModel
+from fastapi import UploadFile # For type hinting
 from . import db_helper
 import nltk
 
@@ -435,14 +436,98 @@ async def query(topic, max_results=100, config=QueryConfiguration()):
         row["score"] = row.get("rank_score", 0)
     return m_res, is_res
 
-async def image_query(image_url: str, max_results: int, config: QueryConfiguration):
+async def image_encode_sig_from_file(uploaded_file: UploadFile) -> list:
     """
-    Stub for image query functionality.
+    Encodes an uploaded image file using the siglip2/encode_image endpoint.
     """
-    print(f"Image query received for URL: {image_url}, max_results: {max_results}, config: {config}")
-    # Placeholder: Implement actual image query logic here
-    # For now, returning empty lists as per the stub requirement
-    return [], []
+    form_data = aiohttp.FormData()
+    form_data.add_field('files',
+                       await uploaded_file.read(),
+                       filename=uploaded_file.filename,
+                       content_type=uploaded_file.content_type)
+    
+    # Ensure the file pointer is reset if read multiple times or passed around
+    await uploaded_file.seek(0)
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(f"{SELF_HOST_MODEL_SERVER_URL_BASE}/siglip2/encode_image", data=form_data) as response:
+            if response.status == 200:
+                # Assuming model server returns List[List[float]] (list of embeddings)
+                raw_embeddings = await response.json()
+                # Transform to the expected format: List[Dict[str, List[float]]]
+                return [{"embedding": emb} for emb in raw_embeddings]
+            else:
+                print(f"Error encoding image {uploaded_file.filename}: {response.status} {await response.text()}")
+                return []
+
+async def image_query(image_file: UploadFile, max_results: int, config: QueryConfiguration):
+    """
+    Performs an image-based query using an uploaded image file.
+    Finds similar images from the IMAGE_TABLE_NAME.
+    """
+    await init() # Ensure DB pool and other initializations are done
+
+    print(f"Image query received for file: {image_file.filename}, max_results: {max_results}, config: {config}")
+
+    img_embeddings = await image_encode_sig_from_file(image_file)
+
+    if not img_embeddings:
+        print("No embeddings generated for the image.")
+        return [], []
+
+    # Dynamically get the image search template builder
+    img_search_fn_name = f"tempalte_vector_search_{IMAGE_TABLE_NAME}"
+    if not hasattr(db_helper, img_search_fn_name):
+        raise AttributeError(f"Function '{img_search_fn_name}' not found in db_helper for table {IMAGE_TABLE_NAME}.")
+    img_search_tmpl_builder = getattr(db_helper, img_search_fn_name)
+
+    tasks = []
+    # Expecting image_encode_sig_from_file to return a list of embedding dicts
+    # For a single image, this list will likely contain one item.
+    for emb_data in img_embeddings: # emb_data is like {'embedding': [0.1, ...]}
+        sql, values = img_search_tmpl_builder(IMAGE_TABLE_NAME, emb_data)
+        tasks.append(
+            asyncio.create_task(
+                execute_query(
+                    sql,
+                    values
+                )
+            )
+        )
+    
+    query_results_list = await asyncio.gather(*tasks)
+
+    # Process and merge results from potentially multiple embedding vectors (though usually one for a single image)
+    unique_img_results = {}
+    for result_set in query_results_list:
+        for row in result_set:
+            result_id = row['id'] # Assuming 'id' is the unique identifier for images
+            result_distance = row.get('distance') # Assuming distance is returned
+
+            if result_distance is None: # Skip if no distance
+                continue
+
+            if result_id not in unique_img_results or result_distance < unique_img_results[result_id]['distance']:
+                unique_img_results[result_id] = row
+    
+    # Sort by distance and take top N
+    sorted_images = sorted(list(unique_img_results.values()), key=lambda x: x['distance'])
+    final_image_results = sorted_images[:max_results]
+
+    # Add 'score' field, e.g., based on similarity (1 - normalized_distance) or directly from model if available
+    for row in final_image_results:
+        row["score"] = row.get("similarity", 1.0 - (row['distance'] if row['distance'] is not None else MAX_DISTANCE) / MAX_DISTANCE)
+        # Ensure all required fields for SearchResultImageItem are present or have defaults
+        row.setdefault('caption', row.get('title', 'N/A')) # Example: use title if caption missing
+        row.setdefault('processed_storage_id', 'N/A')
+        row.setdefault('aspect_ratio', 1.0)
+        row.setdefault('exif', {})
+        row.setdefault('meta', {})
+        row.setdefault('source', [])
+
+
+    # For image_query, text results are typically empty.
+    return [], final_image_results
 
 
 if __name__ == "__main__":
