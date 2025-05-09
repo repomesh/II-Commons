@@ -49,4 +49,3 @@ def tempalte_vector_search_is_pd12m(table_name: str, e: any) -> tuple:
     values = (e, e, e, 0, SUB_QUERY_COUNT)
 
     return sql, values
-

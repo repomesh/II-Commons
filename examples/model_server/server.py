@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile
 from pydantic import BaseModel
 from typing import List, Optional
 from sentence_transformers import SentenceTransformer
@@ -13,6 +13,10 @@ from google.genai import types
 import os
 import json
 import requests
+from PIL import Image
+import io
+import numpy
+from utils import reshape_image, normalize
 
 refine_query_model = "gemini-2.0-flash"
 embedding_model_name = 'Snowflake/snowflake-arctic-embed-m-v2.0'
@@ -28,6 +32,12 @@ device = None
 JINA_RERANK_API_BASE = 'https://api.jina.ai/v1/rerank'
 USE_JINA_RERANK_API = os.getenv("USE_JINA_RERANK_API", "false").lower() == "true"
 JINA_API_KEY = None
+
+MAX_IMAGE_SIZE = (384, 384) # Define MAX_IMAGE_SIZE for prepare_image
+
+def prepare_image(img): # Expects numpy array
+    # reshape_image returns a numpy array, Image.fromarray expects a numpy array
+    return Image.fromarray(reshape_image(img, size=MAX_IMAGE_SIZE, fit=False))
 
 def refine_question_gemini(prompt, json=False):
     if os.getenv("GEMINI_PROXY"):
@@ -213,7 +223,8 @@ class RerankRequest(BaseModel):
 class SiglipTextEmbeddingRequest(BaseModel):
     queries: List[str]
 
-
+class SiglipImageEmbeddingRequest(BaseModel):
+    image_urls: List[str]
 
 
 @app.post("/refine_query")
@@ -255,6 +266,47 @@ def siglip(request: SiglipTextEmbeddingRequest):
             text_features = siglip_model.get_text_features(**inputs)
         return text_features.cpu().numpy().tolist()
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/siglip2/encode_image")
+async def siglip_encode_image(files: List[UploadFile] = File(...)):
+    try:
+        global siglip_model, siglip_processor
+        
+        images = []
+        for file in files:
+            try:
+                contents = await file.read()
+                pil_img = Image.open(io.BytesIO(contents))
+                # Convert PIL image to RGB NumPy array before passing to prepare_image
+                numpy_img = numpy.array(pil_img.convert("RGB"))
+                prepared_img = prepare_image(numpy_img) # prepare_image returns a PIL Image
+                images.append(prepared_img)
+            except IOError as e:
+                print(f"Error opening image file {file.filename}: {e}")
+                # Optionally, skip this image or raise an error
+                continue
+            except Exception as e: # Catch other potential errors during file processing
+                print(f"Error processing file {file.filename}: {e}")
+                continue
+
+
+        if not images:
+            raise HTTPException(status_code=400, detail="No valid images could be processed from the provided files.")
+
+        inputs = siglip_processor(images=images, return_tensors="pt").to(device)
+        
+        with torch.no_grad():
+            image_features = siglip_model.get_image_features(**inputs)
+
+        #NOTICE: normalize siglip embedding, then we can use L2 distance search to improve performance
+        return normalize(image_features).tolist()
+
+    except Exception as e:
+        # Log the full exception for debugging
+        print(f"An error occurred during image encoding: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 
