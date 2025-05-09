@@ -26,8 +26,6 @@ class TextRequest(BaseModel):
             }
         }
 
-# Removed ImageRequest model as image will be uploaded as a file
-
 class SearchResultTextItem(BaseModel):
     score: float
     url: str
