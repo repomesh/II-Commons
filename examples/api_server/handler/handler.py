@@ -460,14 +460,14 @@ async def image_encode_sig_from_file(uploaded_file: UploadFile) -> list:
                 print(f"Error encoding image {uploaded_file.filename}: {response.status} {await response.text()}")
                 return []
 
-async def image_query(image_file: UploadFile, max_results: int, config: QueryConfiguration):
+async def image_query(image_file: UploadFile, max_results: int):
     """
     Performs an image-based query using an uploaded image file.
     Finds similar images from the IMAGE_TABLE_NAME.
     """
     await init() # Ensure DB pool and other initializations are done
 
-    print(f"Image query received for file: {image_file.filename}, max_results: {max_results}, config: {config}")
+    print(f"Image query received for file: {image_file.filename}, max_results: {max_results}")
 
     img_embeddings = await image_encode_sig_from_file(image_file)
 

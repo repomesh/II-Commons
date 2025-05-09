@@ -116,11 +116,7 @@ async def search_text(request: TextRequest):
 @app.post("/search_image", response_model=SearchResp, tags=["Search"], operation_id="cg_search_image")
 async def search_image(
     image_file: UploadFile = File(...),
-    max_results: int = Form(20),
-    refine_query: bool = Form(True), # Default from QueryConfiguration
-    rerank: bool = Form(True),       # Default from QueryConfiguration
-    vector_weight: float = Form(0.6),# Default from QueryConfiguration
-    bm25_weight: float = Form(0.4)   # Default from QueryConfiguration
+    max_results: int = Form(20)
 ):
     """
     Seek common ground knowledge using an image query.
@@ -128,10 +124,6 @@ async def search_image(
     Args:
         image_file (UploadFile): The image file to search with.
         max_results (int): Maximum number of results to return.
-        refine_query (bool): Whether to refine the query (less relevant for direct image search but kept for consistency).
-        rerank (bool): Whether to rerank results.
-        vector_weight (float): Weight for vector search component in fusion.
-        bm25_weight (float): Weight for BM25 search component in fusion.
 
     Returns:
         dict: Search results containing similar images with their metadata
@@ -140,17 +132,10 @@ async def search_image(
         HTTPException: If services are not initialized or search fails
     """
     try:
-        config = handler.QueryConfiguration(
-            refine_query=refine_query,
-            rerank=rerank,
-            vector_weight=vector_weight,
-            bm25_weight=bm25_weight
-        )
         # Process the uploaded image file
         results, images = await handler.image_query(
             image_file=image_file,
-            max_results=max_results,
-            config=config
+            max_results=max_results
         )
         return {"results": results, "images": images}
 
