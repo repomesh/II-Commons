@@ -16,7 +16,7 @@ import requests
 from PIL import Image
 import io
 import numpy
-from utils import reshape_image
+from utils import reshape_image, normalize
 
 refine_query_model = "gemini-2.0-flash"
 embedding_model_name = 'Snowflake/snowflake-arctic-embed-m-v2.0'
@@ -298,8 +298,10 @@ async def siglip_encode_image(files: List[UploadFile] = File(...)):
         
         with torch.no_grad():
             image_features = siglip_model.get_image_features(**inputs)
-            
-        return image_features.cpu().numpy().tolist()
+
+        #NOTICE: normalize siglip embedding, then we can use L2 distance search to improve performance
+        return normalize(image_features).tolist()
+
     except Exception as e:
         # Log the full exception for debugging
         print(f"An error occurred during image encoding: {e}")

@@ -454,8 +454,7 @@ async def image_encode_sig_from_file(uploaded_file: UploadFile) -> list:
             if response.status == 200:
                 # Assuming model server returns List[List[float]] (list of embeddings)
                 raw_embeddings = await response.json()
-                # Transform to the expected format: List[Dict[str, List[float]]]
-                return [{"embedding": emb} for emb in raw_embeddings]
+                return raw_embeddings
             else:
                 print(f"Error encoding image {uploaded_file.filename}: {response.status} {await response.text()}")
                 return []
@@ -465,6 +464,13 @@ async def image_query(image_file: UploadFile, max_results: int):
     Performs an image-based query using an uploaded image file.
     Finds similar images from the IMAGE_TABLE_NAME.
     """
+
+    # Dynamically construct the function name based on TABLE_NAME
+    img_search_fn_name = f""f"tempalte_vector_search_{IMAGE_TABLE_NAME}"
+    if not hasattr(db_helper, img_search_fn_name):
+        raise AttributeError(f"Function '{img_search_fn_name}' not found in db_helper.")
+    img_search_tmpl_builder = getattr(db_helper, img_search_fn_name)
+
     await init() # Ensure DB pool and other initializations are done
 
     print(f"Image query received for file: {image_file.filename}, max_results: {max_results}")
@@ -482,9 +488,7 @@ async def image_query(image_file: UploadFile, max_results: int):
     img_search_tmpl_builder = getattr(db_helper, img_search_fn_name)
 
     tasks = []
-    # Expecting image_encode_sig_from_file to return a list of embedding dicts
-    # For a single image, this list will likely contain one item.
-    for emb_data in img_embeddings: # emb_data is like {'embedding': [0.1, ...]}
+    for emb_data in img_embeddings:
         sql, values = img_search_tmpl_builder(IMAGE_TABLE_NAME, emb_data)
         tasks.append(
             asyncio.create_task(

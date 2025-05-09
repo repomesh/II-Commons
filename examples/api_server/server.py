@@ -132,7 +132,6 @@ async def search_image(
         HTTPException: If services are not initialized or search fails
     """
     try:
-        # Process the uploaded image file
         results, images = await handler.image_query(
             image_file=image_file,
             max_results=max_results
