@@ -198,6 +198,7 @@ def caption_image_api(image_list, api_endpoint="https://generativelanguage.googl
 
 
 __all__ = [
+    'MODEL_NAME',
     'BATCH_SIZE',
     'init',
     'caption_image',
