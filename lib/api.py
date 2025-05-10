@@ -331,23 +331,23 @@ class CaptionVideoAPI(CaptionAPI):
                 safety_settings=[
                     types.SafetySetting(
                         category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                        threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                        threshold=types.HarmBlockThreshold.OFF,
                     ),
                     types.SafetySetting(
                         category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
-                        threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                        threshold=types.HarmBlockThreshold.OFF,
                     ),
                     types.SafetySetting(
                         category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                        threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                        threshold=types.HarmBlockThreshold.OFF,
                     ),
                     types.SafetySetting(
                         category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
-                        threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                        threshold=types.HarmBlockThreshold.OFF,
                     ),
                     types.SafetySetting(
                         category=types.HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY,
-                        threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                        threshold=types.HarmBlockThreshold.OFF,
                     ),
                 ],
                 response_mime_type="application/json",
@@ -390,18 +390,15 @@ class CaptionVideoAPI(CaptionAPI):
             download_result: Either a download result dict or direct file path
 
         Returns:
-            str: Path to the video file
+            list: List of paths to video files
         """
         if isinstance(download_result, dict):
-            return next(
-                (
-                    f["path"]
-                    for f in download_result["files"].values()
-                    if f["type"] == "video"
-                ),
-                None,
-            )
-        return download_result
+            return [
+                f["path"]
+                for f in download_result["files"].values()
+                if f["type"] == "video"
+            ]
+        return [download_result] if download_result else []
 
     def call_vision_api(self, uploaded_files, prompt, mime_type):
         """
@@ -668,52 +665,55 @@ class CaptionVideoAPI(CaptionAPI):
         for i, uri in enumerate(uris):
             try:
                 print(f"🎥 Processing video {i+1}/{len(uris)}: {uri}")
-                video_path = None
+                video_paths = None
                 if downloader.is_youtube_url(uri):
                     # Check if a directory with video ID already exists
-                    # 这是youtube网址，获取最后的视频ID
                     video_id = downloader.extract_video_id(uri)
                     existing_dir = Path(f"downloads/{video_id}")
                     if existing_dir.exists() and existing_dir.is_dir():
                         print(
                             f"📁 Found existing directory for video {video_id}")
-                        video_path = str(
-                            next(existing_dir.glob("*.mp4"), None))
-                        if video_path:
-                            print(f"🎬 Using existing video file: {video_path}")
+                        video_paths = list(existing_dir.glob("*.mp4"))
+                        if video_paths:
+                            print(
+                                f"🎬 Found {len(video_paths)} video files in directory"
+                            )
                         else:
                             print(
                                 f"❌ No video file found in directory: {existing_dir}"
                             )
                             download_result = downloader.download_video(uri)
-                            video_path = self._extract_video_path(
+                            video_paths = self._extract_video_path(
                                 download_result)
-                            if not video_path:
+                            if not video_paths:
                                 print(f"❌ Failed to download video {uri}")
                                 continue
                     else:
                         # Directory doesn't exist, download the video
                         download_result = downloader.download_video(uri)
-                        video_path = self._extract_video_path(download_result)
-                        if not video_path:
+                        video_paths = self._extract_video_path(download_result)
+                        if not video_paths:
                             print(f"❌ Failed to download video {uri}")
                             continue
                 elif Path(uri).is_file():
-                    video_path = uri
+                    video_paths = uri
                 else:
                     print(f"❌ Invalid uri path: {uri}")
                     continue
 
                 # Ensure video_path is not None before proceeding
-                if not video_path:
+                if not video_paths:
                     print(f"❌ No valid video path for {uri}")
                     continue
 
-                processed_videos = (
-                    self.preprocess_video_split(video_path)
-                    if split
-                    else self.preprocess_video_segment(video_path, segment_time)
-                )
+                if not isinstance(video_paths, list):
+                    processed_videos = (
+                        self.preprocess_video_split(video_paths)
+                        if split
+                        else self.preprocess_video_segment(video_paths, segment_time)
+                    )
+                else:
+                    processed_videos = video_paths
                 duration = 0
                 merged_subs = pysrt.SubRipFile()
                 for processed_video in processed_videos:
@@ -751,15 +751,13 @@ class CaptionVideoAPI(CaptionAPI):
                         merged_subs.extend(chunk_subs)
 
                 merged_subs.clean_indexes()
-                merged_subs.save(Path(video_path).with_suffix(
-                    ".srt"), encoding="utf-8")
+                # merged_subs.save(Path(video_paths[0]).with_suffix(".srt"), encoding="utf-8")
                 output = ""
                 for i, sub in enumerate(merged_subs, start=1):
-                    # 格式: 序号 + 时间戳 + 文本
                     output += f"{i}\n"
                     output += f"{sub.start} --> {sub.end}\n"
                     output += f"{sub.text}\n\n"
-                result[uri] = output
+                result["caption_video"] = output
             except Exception as e:
                 print(f"❌ Error processing video {i+1}/{len(uris)}: {str(e)}")
 
@@ -769,6 +767,60 @@ class CaptionVideoAPI(CaptionAPI):
         print(f"🎬 Caption {c} videos in {t:.2f} seconds, {r:.2f} sec/video.")
 
         return result
+
+    def process_segment_video(
+        self,
+        video_url,
+        prompt,
+        start_time,
+        end_time,
+        extract_captions_func=extract_captions_to_srt,
+    ):
+        """
+        Process a single video with the API
+
+        Args:
+            video_url: Path to the video file
+            prompt: The prompt to use for captioning
+            start_time: Start time in seconds
+            end_time: End time in seconds
+            extract_captions_func: Function to extract captions from API response
+
+        Returns:
+            str: Captions for the video segment
+        """
+
+        output = ""
+        start_time = time.time()
+        downloader = YouTubeDownloader()
+
+        download_result = downloader.download_video_with_time(
+            video_url, start_time, end_time
+        )
+        video_paths = self._extract_video_path(download_result)
+        if not video_paths:
+            print(f"❌ Failed to download video {video_url}")
+            return output
+
+        try:
+            caption_result = self.process_video(
+                video_paths[0], prompt, extract_captions_func
+            )
+
+            for i, sub in enumerate(caption_result, start=1):
+                output += f"{i}\n"
+                output += f"{sub.start} --> {sub.end}\n"
+                output += f"{sub.text}\n\n"
+            return output
+        except Exception as e:
+            print(f"❌ Error processing video {video_url}: {str(e)}")
+
+        end_time = time.time()
+        c, t = 1, end_time - start_time
+        r = t / c if c != 0 else 0
+        print(f"🎬 Caption {c} video in {t:.2f} seconds, {r:.2f} sec/video.")
+
+        return output
 
 
 def load_all_prompts(tmpl_dir="prompts"):
@@ -950,6 +1002,11 @@ To specify the timestamps minutes:seconds,milliseconds (MM:SS,mmm) format is use
         pprint.pprint(f"\nVideo: {uri}")
         pprint.pprint(f"Caption: {caption}")
 
+
+__all__ = [
+    "CaptionAPI",
+    "CaptionVideoAPI",
+]
 
 if __name__ == "__main__":
     main()

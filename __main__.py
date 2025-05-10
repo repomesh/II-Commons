@@ -12,6 +12,7 @@ from workflows.embed_text import run_worker as run_embed_text_worker
 from workflows.fetch import run_worker as run_fetch_worker
 from workflows.load import run_worker as run_load_worker
 from workflows.validate import run_worker as run_validate_worker
+from workflows.dump import run_worker as run_dump_worker
 # from workflows.fetch import run_host as run_dataset_fetch_host, run_worker as run_dataset_fetch_worker
 import argparse
 import atexit
@@ -35,7 +36,12 @@ def cleanup():
 atexit.register(cleanup)
 
 
-def run_worker(worker_name: str, dataset_name: str, path: str = None):
+def run_worker(
+        worker_name: str,
+        dataset_name: str,
+        path: str = None,
+        force: bool = False
+):
     match worker_name:
         case 'load':
             run_load_worker(dataset_name, path)
@@ -47,6 +53,8 @@ def run_worker(worker_name: str, dataset_name: str, path: str = None):
             run_embed_image_worker(dataset_name)
         case 'validate':
             run_validate_worker(dataset_name)
+        case 'dump':
+            run_dump_worker(dataset_name, path, force)
         # case 'caption':
         #     run_caption_worker()
         case _:
@@ -67,7 +75,7 @@ Demo:
 
     parser.add_argument(
         '-w', '--worker',
-        help='run worker: load, fetch, embed_text, embed_image',
+        help='run worker: load, fetch, embed_text, embed_image, dump',
         type=str,
         required=False
     )
@@ -121,6 +129,13 @@ Demo:
     )
 
     parser.add_argument(
+        '-f', '--force',
+        help='force: force',
+        action='store_true',
+        required=False
+    )
+
+    parser.add_argument(
         '-v', '--version',
         help='show version information',
         action='version',
@@ -160,7 +175,7 @@ def main() -> Optional[int]:
 
         if args.worker:
             logger.info(f"Run worker: {args.worker}...")
-            run_worker(args.worker, args.dataset, args.path)
+            run_worker(args.worker, args.dataset, args.path, args.force)
         elif args.analyze:
             logger.info(f"Run analyze...")
             run_analyze()
