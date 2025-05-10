@@ -2,7 +2,7 @@ from typing import List
 from dotenv import load_dotenv
 load_dotenv()
 from fastmcp import FastMCP
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 import handler
@@ -112,6 +112,35 @@ async def search_text(request: TextRequest):
     except Exception as e:
         print(f"Search failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+@app.post("/search_image", response_model=SearchResp, tags=["Search"], operation_id="cg_search_image")
+async def search_image(
+    image_file: UploadFile = File(...),
+    max_results: int = Form(20)
+):
+    """
+    Seek common ground knowledge using an image query.
+
+    Args:
+        image_file (UploadFile): The image file to search with.
+        max_results (int): Maximum number of results to return.
+
+    Returns:
+        dict: Search results containing similar images with their metadata
+
+    Raises:
+        HTTPException: If services are not initialized or search fails
+    """
+    try:
+        results, images = await handler.image_query(
+            image_file=image_file,
+            max_results=max_results
+        )
+        return {"results": results, "images": images}
+
+    except Exception as e:
+        print(f"Image search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Image search failed: {str(e)}")
     
 # Generate an MCP server directly from the FastAPI app
 mcp_server = FastMCP.from_fastapi(app)
