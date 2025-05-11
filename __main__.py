@@ -13,6 +13,7 @@ from workflows.fetch import run_worker as run_fetch_worker
 from workflows.load import run_worker as run_load_worker
 from workflows.validate import run_worker as run_validate_worker
 from workflows.dump import run_worker as run_dump_worker
+from workflows.pack import run_worker as run_pack_worker
 # from workflows.fetch import run_host as run_dataset_fetch_host, run_worker as run_dataset_fetch_worker
 import argparse
 import atexit
@@ -36,13 +37,15 @@ def cleanup():
 atexit.register(cleanup)
 
 
-def run_worker(
-        worker_name: str,
+def run_workflow(
+        workflow_name: str,
         dataset_name: str,
         path: str = None,
-        force: bool = False
+        force: bool = False,
+        input: str = None,
+        output: str = None
 ):
-    match worker_name:
+    match workflow_name:
         case 'load':
             run_load_worker(dataset_name, path)
         case 'fetch':
@@ -55,10 +58,12 @@ def run_worker(
             run_validate_worker(dataset_name)
         case 'dump':
             run_dump_worker(dataset_name, path, force)
+        case 'pack':
+            run_pack_worker(input, output, force)
         # case 'caption':
         #     run_caption_worker()
         case _:
-            logger.error(f"Invalid worker name: {worker_name}")
+            logger.error(f"Invalid workflow name: {workflow_name}")
             return 1
 
 
@@ -68,14 +73,14 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Demo:
-    python -m dataset_tools --worker worker_name --name dataset_name --path dataset_path
+    python -m dataset_tools --workflow workflow_name --name dataset_name --path dataset_path
     python -m dataset_tools --version
         """
     )
 
     parser.add_argument(
-        '-w', '--worker',
-        help='run worker: load, fetch, embed_text, embed_image, dump',
+        '-w', '--workflow',
+        help='run workflow: load, fetch, embed_text, embed_image, dump, pack',
         type=str,
         required=False
     )
@@ -129,6 +134,20 @@ Demo:
     )
 
     parser.add_argument(
+        '-i', '--input',
+        help='input: input file/directory',
+        type=str,
+        required=False
+    )
+
+    parser.add_argument(
+        '-o', '--output',
+        help='output: output file/directory',
+        type=str,
+        required=False
+    )
+
+    parser.add_argument(
         '-f', '--force',
         help='force: force',
         action='store_true',
@@ -173,9 +192,12 @@ def main() -> Optional[int]:
         if args.dryrun:
             GlobalConfig.set_dryrun(True)
 
-        if args.worker:
-            logger.info(f"Run worker: {args.worker}...")
-            run_worker(args.worker, args.dataset, args.path, args.force)
+        if args.workflow:
+            logger.info(f"Run workflow: {args.workflow}...")
+            run_workflow(
+                args.workflow, args.dataset, args.path, args.force,
+                args.input, args.output
+            )
         elif args.analyze:
             logger.info(f"Run analyze...")
             run_analyze()
