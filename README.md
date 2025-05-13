@@ -29,7 +29,7 @@ Be sure to configure the [PostgreSQL](https://www.postgresql.org/) and [S3](http
 ## Prepare a Image Dataset
 
 `Chipmunk` supports multiple image datasets, for example [PD12M](https://huggingface.co/datasets/Spawning/PD12M), [CC12M](https://github.com/google-research-datasets/conceptual-12m), [
-cc12m-cleaned](https://huggingface.co/datasets/opendiffusionai/cc12m-cleaned), and so on. It also supports custom datasets in parquet, jsonl, or csv format. In this demonstration, we will use the [first 100,000 entries from PD12M](https://huggingface.co/datasets/Spawning/PD12M/tree/main/metadata?show_file_info=metadata%2Fpd12m.000.parquet) for the sake of speed.
+cc12m-cleaned](https://huggingface.co/datasets/opendiffusionai/cc12m-cleaned), and so on. It also supports custom datasets in parquet, jsonl, or csv format. In this demonstration, we will use a [sample mini dataset](https://github.com/Intelligent-Internet/Chipmunk/tree/main/meta/PD12M) which is the [first 100,000 entries from PD12M](https://huggingface.co/datasets/Spawning/PD12M/tree/main/metadata?show_file_info=metadata%2Fpd12m.000.parquet) for the sake of speed.
 
 ### 1. Load Metadata to Database
 
@@ -65,7 +65,7 @@ $ python . -w embed_image -d pd12m
 
 Navigate to the [wikipedia dump](https://dumps.wikimedia.org/enwiki/20250501/) directory. Download the dump file `pages-articles-multistream` in `xml.bz2` format, like [enwiki-20250501-pages-articles-multistream.xml.bz2](https://dumps.wikimedia.org/enwiki/20250501/enwiki-20250501-pages-articles-multistream.xml.bz2). Extract the `xml` file from the `bz2` archive.
 
-You can use the `sample mini dataset` for testing, jump to the [Load the Dataset to Database](#load-the-dataset-to-database) section.
+You can use the [sample mini dataset](https://github.com/Intelligent-Internet/Chipmunk/tree/main/meta/wikipedia_en) for testing, jump to the [Load the Dataset to Database](#load-the-dataset-to-database) section.
 
 ### 2. Extract Pages from the Raw Dataset
 
