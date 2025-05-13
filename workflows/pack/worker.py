@@ -71,7 +71,7 @@ def pack_data(input, output, force=False):
             line_size = len(line.encode(ENCODING))
             if current_size + line_size > MAX_BYTES:
                 current_file.close()
-                finalize_shard(csv_path, tar_path, json_path)
+                # finalize_shard(csv_path, tar_path, json_path)
                 file_index += 1
                 csv_path, tar_path, json_path = get_file_name(output, file_index)
                 current_file = open(csv_path, 'w', encoding=ENCODING)
@@ -82,7 +82,7 @@ def pack_data(input, output, force=False):
             bytes_read += line_size
             pbar.update(line_size)
         current_file.close()
-        finalize_shard(csv_path, tar_path, json_path)
+        # finalize_shard(csv_path, tar_path, json_path)
         pbar.close()
 
 
