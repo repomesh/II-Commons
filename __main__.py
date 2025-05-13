@@ -3,7 +3,6 @@
 
 from bin.analyze import run as run_analyze
 from bin.query import query as query
-from bin.query_lite import query as query_lite
 from lib.config import GlobalConfig
 from typing import Optional
 # from workflows.caption import run_host as run_caption_host, run_worker as run_caption_worker
@@ -204,9 +203,6 @@ def main() -> Optional[int]:
         elif args.query:
             logger.info(f"Run query: {args.query}...")
             query(args.query)
-        elif args.lite_query:
-            logger.info(f"Run lite query: {args.lite_query}...")
-            query_lite(args.lite_query)
         else:
             logger.info("No action specified")
             return 1
