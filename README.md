@@ -20,7 +20,7 @@ Create a `.env` file from [sample.env](./sample.env) and configure the necessary
 
 Be sure to configure the [PostgreSQL](https://www.postgresql.org/) and [S3](https://aws.amazon.com/s3/) related environment variables. Most of the features are dependent on them.
 
-## Usage for Image Dataset
+## Prepare a Image Dataset
 
 `Chipmunk` supports multiple image datasets, for example [PD12M](https://huggingface.co/datasets/Spawning/PD12M), [CC12M](https://github.com/google-research-datasets/conceptual-12m), [
 cc12m-cleaned](https://huggingface.co/datasets/opendiffusionai/cc12m-cleaned), and so on. It also supports custom datasets in parquet, jsonl, or csv format. In this demonstration, we will use the [first 100,000 entries from PD12M](https://huggingface.co/datasets/Spawning/PD12M/tree/main/metadata?show_file_info=metadata%2Fpd12m.000.parquet) for the sake of speed.
@@ -49,7 +49,7 @@ After the data items are fetched, we can embed the images.
 $ python . -w embed_image -d pd12m
 ```
 
-## Usage for Text Dataset
+## Prepare a Text Dataset
 
 `Chipmunk` is designed to support text based datasets like wikipedia, arXiv and so on. We will use the [Wikipedia English](https://dumps.wikimedia.org/) dataset for demonstration. Full support for arXiv is coming soon.
 
@@ -87,4 +87,10 @@ This step will split the pages into chunks of a certain size, save the chunks to
 
 ```bash
 $ python . -w embed_text -d wikipedia_en
+```
+
+## Query
+
+```bash
+$ python . -q [TOPIC]
 ```
