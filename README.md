@@ -65,7 +65,7 @@ You can use the sample mini dataset for testing, jump to the [Load the Dataset t
 
 The best way to extract pages from the raw dataset is to use the [wikiextractor](https://github.com/attardi/wikiextractor) tool.
 
-Besure to apply this [patch](https://github.com/attardi/wikiextractor/commit/ab8988ebfa9e4557411f3d4c0f4ccda139e18875) to the `wikiextractor` tool before extracting pages.
+Besure to apply this [patch](https://github.com/attardi/wikiextractor/commit/ab8988ebfa9e4557411f3d4c0f4ccda139e18875) to the `wikiextractor` tool to fix this [issue](https://github.com/attardi/wikiextractor/issues/336) before extracting pages.
 
 ```bash
 $ wikiextractor enwiki-20250501-pages-articles-multistream.xml --json --no-templates -o /path/to/wikipedia_en
