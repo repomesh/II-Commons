@@ -45,6 +45,8 @@ $ python . -w fetch -d pd12m
 
 After the data items are fetched, we can embed the images.
 
+We use [google/siglip2-so400m-patch16-naflex](https://huggingface.co/google/siglip2-so400m-patch16-naflex) as default image embedding model.
+
 ```bash
 $ python . -w embed_image -d pd12m
 ```
@@ -84,6 +86,8 @@ $ python . -w load -d wikipedia_en -p ./meta/wikipedia_en
 ### 4. Split Pages into Chunks, and Embed the Chunks
 
 This step will split the pages into chunks of a certain size, save the chunks to the chunking database, and embed the chunks.
+
+We use [Snowflake's Arctic-embed-m-v2.0](https://huggingface.co/Snowflake/snowflake-arctic-embed-m-v2.0) as default text embedding model.
 
 ```bash
 $ python . -w embed_text -d wikipedia_en
