@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 from bin.analyze import run as run_analyze
-from bin.fusion import query as query
-from bin.fusion_lite import query as query_lite
+from bin.query import query as query
+from bin.query_lite import query as query_lite
 from lib.config import GlobalConfig
 from typing import Optional
 # from workflows.caption import run_host as run_caption_host, run_worker as run_caption_worker
