@@ -65,7 +65,7 @@ $ python . -w embed_image -d pd12m
 
 Navigate to the [wikipedia dump](https://dumps.wikimedia.org/enwiki/20250501/) directory. Download the dump file `pages-articles-multistream` in `xml.bz2` format, like [enwiki-20250501-pages-articles-multistream.xml.bz2](https://dumps.wikimedia.org/enwiki/20250501/enwiki-20250501-pages-articles-multistream.xml.bz2). Extract the `xml` file from the `bz2` archive.
 
-You can use the sample mini dataset for testing, jump to the [Load the Dataset to Database](#load-the-dataset-to-database) section.
+You can use the `sample mini dataset` for testing, jump to the [Load the Dataset to Database](#load-the-dataset-to-database) section.
 
 ### 2. Extract Pages from the Raw Dataset
 
