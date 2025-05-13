@@ -8,6 +8,7 @@ The dataset processed by these tools are suitable for model training, fine-tunin
 
 ## Requirements
 
+- [PostgreSQL](https://www.postgresql.org/) for metadata and vector storage
 - [VectorChord](https://github.com/tensorchord/vectorchord) for vector indexing
 - [pg_search](https://github.com/paradedb/paradedb/tree/dev/pg_search#overview) for [BM25](https://en.wikipedia.org/wiki/Okapi_BM25) indexing
 
