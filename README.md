@@ -6,6 +6,11 @@ This repository [Chipmunk](https://en.wikipedia.org/wiki/Chipmunk) contains tool
 
 The dataset processed by these tools are suitable for model training, fine-tuning, RAG, and other applications.
 
+## Requirements
+
+- [VectorChord](https://github.com/tensorchord/vectorchord) for vector indexing
+- [pg_search](https://github.com/paradedb/paradedb/tree/dev/pg_search#overview) for [BM25](https://en.wikipedia.org/wiki/Okapi_BM25) indexing
+
 ## Installation
 
 ```bash
