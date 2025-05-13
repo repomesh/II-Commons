@@ -57,6 +57,8 @@ We use [google/siglip2-so400m-patch16-naflex](https://huggingface.co/google/sigl
 $ python . -w embed_image -d pd12m
 ```
 
+You can run the above command multiple times parallelly to speed up the embedding process in a single machine or in a distributed environment. `Chipmunk` will automatically divide the dataset into multiple parts and embed them in parallel. And also, a worker can be up and down dynamically, `Chipmunk` will automatically manage the workers and the dataset parts, you don't need to care about it.
+
 ## Prepare a Text Dataset
 
 `Chipmunk` is designed to support text based datasets like wikipedia, arXiv and so on. We will use the [Wikipedia English](https://dumps.wikimedia.org/) dataset for demonstration. Full support for arXiv is coming soon.
@@ -100,6 +102,8 @@ We use [Snowflake/snowflake-arctic-embed-m-v2.0](https://huggingface.co/Snowflak
 ```bash
 $ python . -w embed_text -d wikipedia_en
 ```
+
+You can run the above command multiple times parallelly to speed up the embedding process in a single machine or in a distributed environment. `Chipmunk` will automatically divide the dataset into multiple parts and process them in parallel. And also, a worker can be up and down dynamically, `Chipmunk` will automatically manage the workers and the dataset parts, you don't need to care about it.
 
 ## Query
 
