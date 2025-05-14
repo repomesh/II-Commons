@@ -110,3 +110,17 @@ You can run the above command multiple times parallelly to speed up the embeddin
 ```bash
 $ python . -q [TOPIC]
 ```
+
+## Docker
+
+### Build
+
+```bash
+$ docker build -t chipmunk .
+```
+
+### Run
+
+```bash
+$ docker run --rm --gpus all -v ./.env:/app/.env chipmunk
+```

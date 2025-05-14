@@ -48,7 +48,13 @@ RUN DEBIAN_FRONTEND=noninteractive \
 
 # ---- application files -----------------------------------------------------
 WORKDIR /app
-COPY bin lib models prompts workflows __main__.py entrypoint.sh /app/
+COPY ./bin /app/bin
+COPY ./lib /app/lib
+COPY ./models /app/models
+COPY ./prompts /app/prompts
+COPY ./workflows /app/workflows
+COPY ./__main__.py /app/__main__.py
+COPY ./scripts/entrypoint.sh /app/entrypoint.sh
 
 # COPY authorized_keys /root/.ssh/authorized_keys
 # RUN chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys

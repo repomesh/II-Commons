@@ -24,7 +24,7 @@ if [ -n "$TAILSCALE_AUTHKEY" ]; then
   tailscale up --authkey=$TAILSCALE_AUTHKEY --hostname=$TAILSCALE_HOSTNAME
   echo "Tailscale: started successfully"
 else
-  echo "Tailscale: `TAILSCALE_AUTHKEY` not provided, skipping setup"
+  echo "Tailscale: 'TAILSCALE_AUTHKEY' not provided, skipping setup"
 fi
 
 # Start SSH server if SSH_PUBKEY is provided

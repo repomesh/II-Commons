@@ -1,8 +1,8 @@
 # git+https://github.com/huggingface/transformers.git
-transformers
 accelerate
 boto3
 bs4
+dotenv
 flash-attn
 google-cloud-storage
 google-genai
@@ -24,5 +24,6 @@ scenedetect
 scipy
 sentence_transformers
 torchvision
+transformers
 # vllm
 yt-dlp
