@@ -1,59 +1,60 @@
-# Use an official PyTorch image with CUDA 12.1 and Python 3.11
-# Note: Previous tags were not found, using 2.3.1 instead.
+# ---------------------------------------------------------------------------
+#   Use an official PyTorch image with CUDA 12.1 and Python 3.11
+#   Note: Previous tags were not found, using 2.3.1 instead.
+# ---------------------------------------------------------------------------
 FROM pytorch/pytorch:2.3.1-cuda12.1-cudnn8-runtime
 EXPOSE 22
 
-# Set the working directory in the container
-WORKDIR /app
-
-# Install system dependencies required by requirements.txt (git for transformers, mediainfo)
-# Also install build-essential for potential C extensions during pip install
-# Install libgl1-mesa-glx and libglib2.0-0 for OpenCV dependencies
+# ---- base system packages --------------------------------------------------
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
-    apt-get install -y --no-install-recommends git mediainfo build-essential libgl1-mesa-glx libglib2.0-0 openssh-server sudo && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends \
+    wget git mediainfo build-essential \
+    libgl1-mesa-glx libglib2.0-0 \
+    openssh-server sudo \
+    python3 python3-pip python-is-python3 && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Tailscale using the official script
+# 加入 NVIDIA CUDA apt repository
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends wget gnupg ca-certificates && \
+    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin -O /etc/apt/preferences.d/cuda-repository-pin-600 && \
+    wget https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-ubuntu2204-12-1-local_12.1.1-530.30.02-1_amd64.deb && \
+    dpkg -i cuda-repo-ubuntu2204-12-1-local_12.1.1-530.30.02-1_amd64.deb && \
+    cp /var/cuda-repo-ubuntu2204-12-1-local/cuda-*-keyring.gpg /usr/share/keyrings/ && \
+    apt-get update
+
+# 安裝 CUDA Toolkit
+RUN apt-get install -y --no-install-recommends cuda-toolkit-12-1 && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# ---- Tailscale + SSH extras -------------------------------------------------
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
-    apt-get install -y ca-certificates curl gnupg && \
-    curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/focal.gpg | gpg --dearmor -o /usr/share/keyrings/tailscale-archive-keyring.gpg && \
-    echo "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/ubuntu focal main" | tee /etc/apt/sources.list.d/tailscale.list && \
+    apt-get install -y --no-install-recommends ca-certificates curl gnupg && \
+    curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/focal.gpg | \
+    gpg --dearmor -o /usr/share/keyrings/tailscale-archive-keyring.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] \
+    https://pkgs.tailscale.com/stable/ubuntu focal main" \
+    > /etc/apt/sources.list.d/tailscale.list && \
     apt-get update && \
-    apt-get install -y tailscale && \
+    apt-get install -y --no-install-recommends tailscale && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# RUN mkdir /var/run/sshd
-# COPY --chown=root:root --chmod=700 10-sshd /etc/sudoers.d/10-ssh
-# RUN groupadd -r zeruser; useradd -r -g zeruser -d /app zeruser -s /bin/bash; chown -R zeruser:zeruser /app; cd /app
-# delete ssh host keys so they can be generated at runtime
-# RUN rm -v /etc/ssh/ssh_host_*
+# rest of stack (no --pre, ordinary indexes)
+COPY requirements.txt /tmp/requirements.txt
+RUN DEBIAN_FRONTEND=noninteractive PATH=/opt/conda/bin:/usr/local/cuda/bin:$PATH python3 -m pip install --upgrade pip && \
+    python3 -m pip install --upgrade packaging && \
+    python3 -m pip install --no-cache-dir -r /tmp/requirements.txt
 
-# Copy the requirements file into the container at /app
-COPY requirements.txt ./
+# ---- application files -----------------------------------------------------
+WORKDIR /app
+COPY bin lib models prompts workflows __main__.py entrypoint.sh /app/
 
-# Install any needed packages specified in requirements.txt
-# Using --no-cache-dir reduces image size
-RUN pip install --no-cache-dir -r requirements.txt
+# COPY authorized_keys /root/.ssh/authorized_keys
+# RUN chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys
 
-# Copy the rest of the application code into the container at /app
-# This assumes your Dockerfile is in the root of your project
-# and includes run_embedding_image_worker.py, workflows/, lib/, etc.
-COPY . .
-
-# Create entrypoint script to handle Tailscale setup and application startup
-# COPY --chown=root:root --chmod=777 entrypoint.sh /app/entrypoint.sh
+# Make entrypoint script executable
 RUN chmod +x /app/entrypoint.sh
-# USER zeruser
 
-COPY authorized_keys /tmp/authorized_keys || true
-RUN if [ -f /tmp/authorized_keys ]; then \
-    mkdir -p /root/.ssh && \
-    mv /tmp/authorized_keys /root/.ssh/authorized_keys && \
-    chmod 700 /root/.ssh && \
-    chmod 600 /root/.ssh/authorized_keys; \
-    fi
-
-# Use the entrypoint script to handle Tailscale and application startup
+# ---- launch ---------------------------------------------------------------
 ENTRYPOINT ["/app/entrypoint.sh"]

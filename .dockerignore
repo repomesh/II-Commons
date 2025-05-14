@@ -1,0 +1,8 @@
+/models/*.gguf
+/models/*.bin
+/models/*.pt
+/models/*.pth
+/models/*.ckpt
+/models/*.safetensors
+/models/*.safetensors.index.json
+/models/*.safetensors.index.json.part
