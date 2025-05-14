@@ -1,11 +1,15 @@
 from typing import List
+
 from dotenv import load_dotenv
+
 load_dotenv()
-from fastmcp import FastMCP
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-from pydantic import BaseModel
 from contextlib import asynccontextmanager
+
 import handler
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastmcp import FastMCP
+from pydantic import BaseModel
+
 
 class TextRequest(BaseModel):
     query: str
@@ -149,6 +153,7 @@ if __name__ == "__main__":
     import os
     import signal
     from multiprocessing import Process
+
     import uvicorn
     port = os.getenv("API_SERVER_PORT", 8080)
     port = int(port)

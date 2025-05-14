@@ -1,21 +1,24 @@
 from dotenv import load_dotenv
+
 load_dotenv()
 
-from fastapi import FastAPI, HTTPException, File, UploadFile
-from pydantic import BaseModel
-from typing import List, Optional
+import io
+import json
+import os
 from contextlib import asynccontextmanager
+from typing import List, Optional
+
+import numpy
+import requests
 import torch
-from transformers import AutoModel, AutoProcessor, AutoTokenizer, AutoModel, AutoModelForSequenceClassification
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from google import genai
 from google.genai import types
-import os
-import json
-import requests
 from PIL import Image
-import io
-import numpy
-from utils import reshape_image, normalize
+from pydantic import BaseModel
+from transformers import (AutoModel, AutoModelForSequenceClassification,
+                          AutoProcessor, AutoTokenizer)
+from utils import normalize, reshape_image
 
 refine_query_model = "gemini-2.0-flash"
 embedding_model_name = 'Snowflake/snowflake-arctic-embed-m-v2.0'
@@ -360,9 +363,10 @@ async def siglip_encode_image(files: List[UploadFile] = File(...)):
 
 args = None
 if __name__ == "__main__":
-    import uvicorn
-    import os
     import argparse
+    import os
+
+    import uvicorn
 
     parser = argparse.ArgumentParser(description="Model Serving API")
     parser.add_argument(
