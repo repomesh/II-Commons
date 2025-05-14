@@ -8,9 +8,9 @@ The dataset processed by these tools are suitable for model training, fine-tunin
 
 ## Requirements
 
-- [PostgreSQL](https://www.postgresql.org/) for metadata and vector storage
+- [PostgreSQL](https://www.postgresql.org/) for metadata and vector storage ([PostgreSQL License](https://opensource.org/license/postgresql))
 - [VectorChord](https://github.com/tensorchord/vectorchord) for vector indexing ([ELv2](https://github.com/tensorchord/VectorChord/blob/main/licenses/LICENSE.ELv2), [AGPLv3](https://github.com/tensorchord/VectorChord/blob/main/licenses/LICENSE.AGPLv3))
-- [pg_search](https://github.com/paradedb/paradedb/tree/dev/pg_search#overview) for [BM25](https://en.wikipedia.org/wiki/Okapi_BM25) indexing
+- [pg_search](https://github.com/paradedb/paradedb/tree/dev/pg_search#overview) for [BM25](https://en.wikipedia.org/wiki/Okapi_BM25) indexing ([AGPLv3](https://github.com/paradedb/paradedb?tab=AGPL-3.0-1-ov-file))
 
 ## Installation
 
