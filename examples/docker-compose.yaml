@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   model_server:
     build:
@@ -33,4 +31,17 @@ services:
       - .env
     depends_on:
       - model_server
+    restart: unless-stopped
+
+  demosite:
+    build:
+      context: demosite
+      dockerfile: Dockerfile
+    container_name: demosite
+    ports:
+      - "5001:5001"
+    env_file:
+      - .env
+    depends_on:
+      - api_server
     restart: unless-stopped

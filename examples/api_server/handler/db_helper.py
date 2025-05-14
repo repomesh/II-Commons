@@ -42,7 +42,7 @@ def tempalte_bm25_search_ts_wikipedia_en_embed(table_name: str, b: any) -> tuple
 
 
 def tempalte_vector_search_is_pd12m(table_name: str, e: any) -> tuple:
-    sql = f"""SELECT id, url, caption, processed_storage_id, aspect_ratio, exif, meta, source,
+    sql = f"""SELECT id, url, caption, processed_storage_id, aspect_ratio, exif, source,
             (vector <-> %s::vector) as distance,
             (1 / (1 + (vector <-> %s::vector))) AS similarity
             FROM {table_name} ORDER BY (vector <-> %s::vector) ASC OFFSET %s LIMIT %s"""

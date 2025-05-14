@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Demo</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        /* Define CSS variables for easier theme management */
+        :root {
+            --bg-color: #121212; /* Dark background */
+            --text-color: #e0e0e0; /* Light text */
+            --primary-accent: #00aaff; /* Example accent color (light blue) */
+            --secondary-accent: #ff00ff; /* Example accent color (magenta) */
+            --card-bg: #1e1e1e; /* Slightly lighter dark for cards */
+            --border-color: #333;
+            --input-bg: #2a2a2a;
+            --input-text: #e0e0e0;
+            --button-gradient: linear-gradient(90deg, var(--primary-accent), var(--secondary-accent));
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            /* Add a subtle star background if possible, otherwise just dark */
+            /* background-image: url('path/to/star-pattern.png'); */ /* Optional: Add a background pattern */
+        }
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 5vh; /* Adjust vertical position */
+            padding-bottom: 2rem;
+        }
+        .search-container {
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 2rem;
+        }
+        .search-input-group {
+            border-radius: 24px;
+            overflow: hidden;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color); /* Subtle border */
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4); /* Darker shadow */
+        }
+        .search-input-group .form-control {
+            background-color: var(--input-bg);
+            color: var(--input-text);
+            border: none;
+            height: 48px;
+            padding-left: 20px;
+        }
+        .search-input-group .form-control::placeholder { /* Style placeholder text */
+            color: #888;
+        }
+        .search-input-group .form-control:focus {
+            box-shadow: none;
+            background-color: var(--input-bg); /* Ensure focus doesn't change bg */
+            color: var(--input-text);
+        }
+        .search-input-group .btn {
+            background-color: var(--input-bg);
+            color: var(--text-color); /* Icon color */
+            border: none;
+            height: 48px;
+            width: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+         .search-input-group .btn:hover {
+            color: var(--primary-accent); /* Highlight on hover */
+         }
+        .search-input-group .btn-search {
+             /* Apply gradient background */
+             background: var(--button-gradient);
+             color: white;
+             border-radius: 0 24px 24px 0;
+             width: 60px;
+             transition: filter 0.2s ease;
+        }
+        .search-input-group .btn-search:hover {
+             filter: brightness(1.2); /* Brighter on hover */
+        }
+        .img-preview-container {
+            margin-top: 1rem;
+            text-align: center;
+            position: relative; /* For the remove button */
+            display: inline-block; /* Fit content */
+        }
+        .img-preview-container img {
+            max-width: 100%;
+            max-height: 100px;
+            border: 1px solid var(--border-color); /* Use theme border color */
+            border-radius: 0.25rem;
+            display: block;
+        }
+        .remove-image-btn {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background-color: rgba(42, 42, 42, 0.9); /* Darker background for button */
+            color: var(--text-color); /* Light text */
+            border-radius: 50%;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            line-height: 24px;
+            text-align: center;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            font-size: 14px;
+            line-height: 22px; /* Adjust for vertical centering */
+        }
+        .loader {
+            border: 5px solid var(--border-color); /* Use theme border color */
+            border-radius: 50%;
+            border-top: 5px solid var(--primary-accent); /* Use accent color for spinner */
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+            display: none; /* Hidden by default */
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .results-area {
+            width: 100%;
+            max-width: 900px;
+            margin-top: 1rem;
+        }
+        /* Style result cards */
+        .result-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            margin-bottom: 1.5rem; /* Consistent margin */
+            border-radius: 8px; /* Slightly rounded corners for cards */
+        }
+         .result-card img {
+            height: 180px;
+            object-fit: cover;
+            border-top-left-radius: 8px; /* Match card rounding */
+            border-top-right-radius: 8px;
+        }
+        .result-card .card-body {
+            padding: 1rem;
+        }
+        /* Use the main text color instead of muted
+        .result-card .card-text small {
+             color: var(--text-color);
+        } */
+        .result-card .btn-outline-secondary {
+            color: var(--primary-accent);
+            border-color: var(--primary-accent);
+        }
+        .result-card .btn-outline-secondary:hover {
+            background-color: var(--primary-accent);
+            color: var(--bg-color);
+        }
+
+        /* Style text results */
+        .list-group-item {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            margin-bottom: 0.75rem; /* Spacing */
+            border-radius: 8px;
+        }
+        .list-group-item h5 {
+            color: var(--text-color); /* Ensure heading color is light */
+        }
+        /*.list-group-item small, .list-group-item .text-muted {
+            color: var(--text-color);
+        }*/
+         .list-group-item a {
+            color: var(--primary-accent);
+         }
+         .list-group-item a:hover {
+            color: var(--secondary-accent);
+         }
+
+        /* Style Max Results */
+        .max-results-container {
+            text-align: center;
+            margin-top: 1rem;
+            color: #aaa; /* Lighter text for less emphasis */
+        }
+        .max-results-container label {
+            margin-right: 0.5rem;
+        }
+        .max-results-container input {
+            width: 70px;
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+            background-color: var(--input-bg); /* Dark background */
+            color: var(--input-text); /* Light text */
+            border: 1px solid var(--border-color); /* Subtle border */
+            border-radius: 4px;
+        }
+
+        /* Alert styling for dark theme */
+        .alert {
+            border: none; /* Remove default border */
+            color: #fff; /* Ensure text is white */
+        }
+        .alert-danger {
+            background-color: #dc3545; /* Keep Bootstrap red */
+        }
+        .alert-warning {
+            background-color: #ffc107;
+            color: #000; /* Warning needs dark text */
+        }
+        .alert-success {
+            background-color: #198754;
+        }
+        .alert-info {
+            background-color: #0dcaf0;
+            color: #000; /* Info needs dark text */
+        }
+        .alert .btn-close {
+            filter: invert(1) grayscale(100%) brightness(200%); /* Make close button white */
+        }
+
+        /* General heading style */
+        h1, h3, h4 {
+             color: var(--text-color); /* Ensure headings are light */
+             /* Consider adding a specific font-family if available */
+             /* font-family: 'Your Company Font', sans-serif; */
+        }
+         h1 {
+             font-weight: 300; /* Lighter weight for main title */
+             letter-spacing: 1px;
+         }
+         h3, h4 {
+             margin-bottom: 1rem;
+             border-bottom: 1px solid var(--border-color); /* Subtle separator */
+             padding-bottom: 0.5rem;
+         }
+
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Alert Area -->
+        <div id="alert-area" class="mb-3" style="width: 100%; max-width: 600px;"></div>
+
+        <!-- Unified Search Form -->
+        <div class="search-container">
+            <form id="unified-search-form">
+                <div class="input-group search-input-group mb-3">
+                    <input type="text" class="form-control" id="query" name="query" placeholder="Enter text or upload an image to search...">
+                    <button class="btn btn-light" type="button" id="upload-image-btn" title="Upload image to search">
+                        <i class="bi bi-camera-fill"></i>
+                    </button>
+                    <input type="file" id="image_file" name="image_file" accept="image/*" style="display: none;">
+                    <button class="btn btn-search" type="submit" title="Search">
+                        <span class="spinner-border spinner-border-sm d-none me-1" role="status" aria-hidden="true"></span>
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+
+                <!-- Image Preview Area -->
+                <div id="image-preview-area" class="text-center">
+                    <!-- Preview will be injected here -->
+                </div>
+
+                <!-- Max Results Input -->
+                <div class="max-results-container">
+                     <label for="max_results" class="form-label me-2">Max Results:</label>
+                     <input type="number" class="form-control d-inline-block me-3" id="max_results" name="max_results" value="10" min="1" style="width: 70px;">
+
+                     <label for="search_type" class="form-label me-2">Search Type:</label>
+                     <select class="form-select d-inline-block" id="search_type" name="search_type" style="width: auto; background-color: var(--input-bg); color: var(--input-text); border-color: var(--border-color);">
+                         <option value="all" selected>All</option>
+                         <option value="text">Text Only</option>
+                         <option value="image">Image Only</option>
+                     </select>
+                </div>
+            </form>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loading-indicator" class="loader"></div>
+
+        <!-- Results Area -->
+        <div id="results-area" class="results-area">
+            <!-- Results will be injected here -->
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const searchForm = document.getElementById('unified-search-form');
+        const queryInput = document.getElementById('query');
+        const imageFileInput = document.getElementById('image_file');
+        const uploadImageBtn = document.getElementById('upload-image-btn');
+        const imagePreviewArea = document.getElementById('image-preview-area');
+        const resultsArea = document.getElementById('results-area');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const alertArea = document.getElementById('alert-area');
+        const maxResultsInput = document.getElementById('max_results');
+        const searchTypeSelect = document.getElementById('search_type');
+        const submitButton = searchForm.querySelector('button[type="submit"]');
+        const submitButtonIcon = submitButton.querySelector('i');
+        const submitButtonSpinner = submitButton.querySelector('.spinner-border');
+
+        let currentImageFile = null; // Store the selected file
+
+        // Function to display alerts
+        function showAlert(message, type = 'danger') {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = [
+                `<div class="alert alert-${type} alert-dismissible fade show" role="alert">`,
+                `   <div>${message}</div>`,
+                '   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>',
+                '</div>'
+            ].join('');
+            alertArea.innerHTML = ''; // Clear previous alerts
+            alertArea.append(wrapper);
+        }
+
+        // Function to toggle loading state
+        function toggleLoading(isLoading) {
+            if (isLoading) {
+                submitButton.disabled = true;
+                submitButtonIcon.classList.add('d-none');
+                submitButtonSpinner.classList.remove('d-none');
+                loadingIndicator.style.display = 'block';
+            } else {
+                submitButton.disabled = false;
+                submitButtonIcon.classList.remove('d-none');
+                submitButtonSpinner.classList.add('d-none');
+                loadingIndicator.style.display = 'none';
+            }
+        }
+
+        // Trigger hidden file input click
+        uploadImageBtn.addEventListener('click', () => {
+            imageFileInput.click();
+        });
+
+        // Handle image selection and preview
+        imageFileInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                currentImageFile = file; // Store the file
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreviewArea.innerHTML = `
+                        <div class="img-preview-container">
+                            <img src="${e.target.result}" alt="Image preview" />
+                            <button type="button" class="remove-image-btn" title="Remove image">&times;</button>
+                        </div>`;
+                    // Add event listener to the remove button
+                    imagePreviewArea.querySelector('.remove-image-btn').addEventListener('click', clearImageSelection);
+                    queryInput.placeholder = "Image selected, click search"; // Update placeholder
+                    queryInput.value = ''; // Clear text input when image is selected
+                    queryInput.disabled = true; // Disable text input
+                }
+                reader.readAsDataURL(file);
+            } else {
+                clearImageSelection();
+            }
+        });
+
+        // Function to clear image selection
+        function clearImageSelection() {
+            currentImageFile = null;
+            imageFileInput.value = ''; // Clear the file input
+            imagePreviewArea.innerHTML = ''; // Clear the preview
+            queryInput.placeholder = "Enter text or upload an image to search..."; // Reset placeholder
+            queryInput.disabled = false; // Enable text input
+        }
+
+        // Handle Form Submission
+        searchForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            alertArea.innerHTML = '';
+            resultsArea.innerHTML = '';
+
+            const maxResults = parseInt(maxResultsInput.value, 10) || 10;
+            const queryValue = queryInput.value.trim();
+
+            // Determine search type: Image or Text
+            if (currentImageFile) {
+                // --- Image Search ---
+                toggleLoading(true);
+                const formData = new FormData();
+                formData.append('image_file', currentImageFile);
+                formData.append('max_results', maxResults);
+
+                try {
+                    const response = await fetch('/search_image_action', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    console.log(data)
+                    if (!response.ok) throw new Error(data.error || `HTTP error! status: ${response.status}`);
+                    displayResults(data, `for the uploaded image`);
+                } catch (error) {
+                    console.error('Image search error:', error);
+                    showAlert(`Image search failed: ${error.message}`);
+                } finally {
+                    toggleLoading(false);
+                }
+
+            } else if (queryValue) {
+                // --- Text Search ---
+                toggleLoading(true);
+                const searchType = searchTypeSelect.value;
+                const payload = {
+                    query: queryValue,
+                    max_results: maxResults,
+                    search_type: searchType
+                };
+
+                try {
+                    const response = await fetch('/search_text_action', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error || `HTTP error! status: ${response.status}`);
+                    displayResults(data, `for "${queryValue}"`);
+                } catch (error) {
+                    console.error('Text search error:', error);
+                    showAlert(`Text search failed: ${error.message}`);
+                } finally {
+                    toggleLoading(false);
+                }
+            } else {
+                // --- No Input ---
+                showAlert('Please enter search text or upload an image.', 'warning');
+            }
+        });
+
+        // Function to display results (adapted for Bootstrap)
+        function displayResults(data, searchContext) {
+            resultsArea.innerHTML = ''; // Clear previous results
+            let content = `<h3 class="mt-4 mb-3 text-center">Search Results ${searchContext}</h3>`;
+            let foundResults = false;
+
+            // Display Image Results
+            if (data.images && data.images.length > 0) {
+                foundResults = true;
+                content += '<h4>Image Results:</h4><div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3 mb-4">'; // Use Bootstrap grid
+                data.images.forEach(img => {
+                    content += `
+                        <div class="col">
+                            <div class="card shadow-sm result-card">
+                                <img src="${img.url}" class="card-img-top" alt="${img.caption || 'Search image'}">
+                                <div class="card-body">
+                                    ${img.caption ? `<p class="card-text"><small class="mb-1">${img.caption}</small></p>` : ''}
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="mb-1">Score: ${img.score ? img.score.toFixed(4) : 'N/A'}</small>
+                                        <a href="${img.url}" class="btn btn-sm btn-outline-secondary" target="_blank">View</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+                content += '</div>';
+            }
+
+            // Display Text Results
+            if (data.results && data.results.length > 0) {
+                foundResults = true;
+                content += '<h4 class="mt-3">Text Results:</h4><div class="list-group">';
+                data.results.forEach(item => {
+                    content += `
+                        <div class="list-group-item list-group-item-action flex-column align-items-start">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">${item.title || 'Untitled'}</h5>
+                                <small class="text-muted">Score: ${item.score ? item.score.toFixed(4) : 'N/A'}</small>
+                            </div>
+                            <p class="mb-1">${item.text || 'No content'}</p>
+                            ${item.url ? `<small><a href="${item.url}" target="_blank" class="text-decoration-none">Visit Source <i class="bi bi-box-arrow-up-right"></i></a></small>` : ''}
+                        </div>`;
+                });
+                content += '</div>';
+            }
+
+            if (!foundResults) {
+                content += '<p class="text-center text-muted mt-4">No results found.</p>';
+            }
+            resultsArea.innerHTML = content;
+        }
+
+        // Initial setup: Clear image selection if any persisted from browser cache
+        clearImageSelection();
+
+    </script>
+</body>
+</html>
