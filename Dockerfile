@@ -14,17 +14,15 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     python3 python3-pip python-is-python3 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# 加入 NVIDIA CUDA apt repository
+# ---- CUDA Toolkit ----------------------------------------------------------
 RUN apt-get update && \
     apt-get install -y --no-install-recommends wget gnupg ca-certificates && \
     wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin -O /etc/apt/preferences.d/cuda-repository-pin-600 && \
     wget https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda-repo-ubuntu2204-12-1-local_12.1.1-530.30.02-1_amd64.deb && \
     dpkg -i cuda-repo-ubuntu2204-12-1-local_12.1.1-530.30.02-1_amd64.deb && \
     cp /var/cuda-repo-ubuntu2204-12-1-local/cuda-*-keyring.gpg /usr/share/keyrings/ && \
-    apt-get update
-
-# 安裝 CUDA Toolkit
-RUN apt-get install -y --no-install-recommends cuda-toolkit-12-1 && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends cuda-toolkit-12-1 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # ---- Tailscale + SSH extras -------------------------------------------------
@@ -42,7 +40,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
 
 # rest of stack (no --pre, ordinary indexes)
 COPY requirements.txt /tmp/requirements.txt
-RUN DEBIAN_FRONTEND=noninteractive PATH=/opt/conda/bin:/usr/local/cuda/bin:$PATH python3 -m pip install --upgrade pip && \
+RUN DEBIAN_FRONTEND=noninteractive \
+    PATH=/opt/conda/bin:/usr/local/cuda/bin:$PATH \
+    python3 -m pip install --upgrade pip && \
     python3 -m pip install --upgrade packaging && \
     python3 -m pip install --no-cache-dir -r /tmp/requirements.txt
 
