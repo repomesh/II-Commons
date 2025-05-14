@@ -1,0 +1,9 @@
+transformers==4.51.3
+xformers==v0.0.29.post2
+python-dotenv
+uvicorn
+pydantic
+opencv-python
+fastapi
+google-genai
+python-multipart

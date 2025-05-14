@@ -4,15 +4,15 @@ import os
 import asyncio
 import time
 import functools
+from typing import Literal
 from pydantic import BaseModel
-from fastapi import UploadFile # For type hinting
+from fastapi import UploadFile
 from . import db_helper
 import nltk
 
 TABLE_NAME = "ts_wikipedia_en_embed"
 IMAGE_TABLE_NAME = "is_pd12m"
 
-# TABLE_NAME = "ts_ms_marco"
 pool = None
 MAX_DISTANCE = 2
 MAX_SCORE = 50
@@ -23,16 +23,18 @@ MAX_SUBQUERY_COUNT = 3
 class QueryConfiguration(BaseModel):
     refine_query: bool = True
     rerank: bool = True
-    vector_weight: float = 0.6
-    bm25_weight: float = 0.4
+    vector_weight: float = 0.9
+    bm25_weight: float = 0.1
+    search_type: Literal["text", "image", "all"] = "text"
 
     class Config:
         json_schema_extra = {
             "example": {
                 "refine_query": True,
                 "rerank": True,
-                "vector_weight": 0.6,
-                "bm25_weight": 0.4
+                "vector_weight": 0.9,
+                "bm25_weight": 0.1,
+                "search_type": "text"
             }
         }
 
@@ -74,7 +76,7 @@ async def init():
 async def clean():
     await clean_db()
 
-def fusion_sort_key(result, vector_weight=0.6, bm25_weight=0.4):
+def fusion_sort_key(result, vector_weight=0.9, bm25_weight=0.1):
     distance = result['distance'] if result['distance'] is not None else MAX_DISTANCE
     score = result['score'] if result['score'] is not None else 0
     normalized_score = score / MAX_SCORE
@@ -132,32 +134,20 @@ async def query_db(cur, sql=None, values=None, **kwargs):
         print(f"Error executing or fetching from query: {e}")
         print(f"SQL: {sql}")
         print(f"Values: {values}")
-        # Re-raise the exception so it can be caught further up if needed
         raise e
-    # This part is likely unreachable now if an exception occurs, 
-    # but kept for structural integrity if fetchall() returns None or similar non-exception cases.
-    # However, psycopg usually raises an exception on errors.
-    # Consider removing if cursor is not meant to be returned directly.
-    # For now, let's keep it but acknowledge the raise above.
-    return cursor # This might need adjustment based on how errors should propagate.
-
 
 def timeit(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         start_time = time.perf_counter()
-        # Check if the function is async
         if asyncio.iscoroutinefunction(func):
-            # Create an async wrapper for async functions
             async def async_wrapper():
                 result = await func(*args, **kwargs)
                 end_time = time.perf_counter()
                 print(f"Function {func.__name__!r} executed in {end_time - start_time:.4f}s")
                 return result
-            # Return the coroutine object created by async_wrapper
             return async_wrapper()
         else:
-            # Execute sync function directly
             result = func(*args, **kwargs)
             end_time = time.perf_counter()
             print(f"Function {func.__name__!r} executed in {end_time - start_time:.4f}s")
@@ -272,7 +262,6 @@ async def rerank(query, documents, max_results):
 def chunk_by_sentence(document):
     return nltk.sent_tokenize(document)
 
-# @timeit # Keep the decorator definition but don't apply it to query itself for now as requested
 async def query(topic, max_results=100, config=QueryConfiguration()):
     # Dynamically construct the function name based on TABLE_NAME
     v_search_fn_name = f"tempalte_vector_search_{TABLE_NAME}"
@@ -290,151 +279,163 @@ async def query(topic, max_results=100, config=QueryConfiguration()):
     img_search_tmpl_builder = getattr(db_helper, img_search_fn_name)
     await init()
 
+    # Initialize final results lists
+    m_res_final = [] 
+    is_res_final = []
+    # Intermediate data storage for search results
+    e_res_data, b_res_data, is_res_data = [], [], []
+
     tp_resp = {"sentences": [topic], "keywords": [topic]}
 
     if config.refine_query:
         print("> Refining query...")
-        tp_resp = await refine_query(topic) # Use await
+        tp_resp = await refine_query(topic)
         if not tp_resp:
             print("Refined query is empty, using original topic.")
             tp_resp = {"sentences": [topic], "keywords": [topic]}
         tp_resp["sentences"] = tp_resp["sentences"][:MAX_SUBQUERY_COUNT]
         tp_resp["keywords"] = tp_resp["keywords"][:MAX_SUBQUERY_COUNT]
 
-    # Perform embedding and BM25 searches concurrently
-    embedding_search_task = asyncio.create_task(
-        _perform_embedding_search(tp_resp, v_search_tmpl_builder, TABLE_NAME)
-    )
-    bm25_search_task = asyncio.create_task(
-        _perform_bm25_search(tp_resp, bm25_search_tmpl_builder, TABLE_NAME)
-    )
-    img_search_task = asyncio.create_task(
-        _perform_img_search(tp_resp, img_search_tmpl_builder)
-    )
+    # Conditionally perform searches based on search_type
+    tasks_to_run = []
+    embedding_search_task_idx, bm25_search_task_idx, img_search_task_idx = -1, -1, -1
+    current_task_idx = 0
 
-    e_res, b_res, is_res = await asyncio.gather(embedding_search_task, bm25_search_task, img_search_task)
+    if config.search_type in ["text", "all"]:
+        tasks_to_run.append(asyncio.create_task(
+            _perform_embedding_search(tp_resp, v_search_tmpl_builder, TABLE_NAME)
+        ))
+        embedding_search_task_idx = current_task_idx
+        current_task_idx += 1
 
-    # Merge Vector and BM25 search results
-    print("> Fuse Score...")
-    merged_results = {}
-    for row in e_res:
-        result_id = row['id']
-        merged_results[result_id] = {
-            **row,
-            'score': None
-        }
-    for row in b_res:
-        result_id = row['id']
-        if result_id in merged_results:
-            merged_results[result_id].update(row)
-        else:
-            merged_results[result_id] = {
-                **row,
-                'distance': None,
-                'similarity': None
-            }
-    m_res = sorted(merged_results.values(
-    ), key=lambda x: x['distance'] if x['distance'] is not None else MAX_DISTANCE)
-    def sort_key_fn(result):
-        return fusion_sort_key(result, config.vector_weight, config.bm25_weight)
-    m_res = sorted(m_res, key=sort_key_fn, reverse=True)
-    m_res = m_res[:max(MAX_RERANK_INPUT_LEN, max_results*10)]
- 
-    # Merge chunks
-    print("> Merge chunks...")
-    merged_results = {}
-    for row in m_res:
-        group_key = row['source_id']
-        if group_key not in merged_results:
-            merged_results[group_key] = {**row, 'chunks': []}
-        merged_results[group_key]['distance'] = min(
-            merged_results[group_key]['distance'] if merged_results[group_key]['distance'] is not None else MAX_DISTANCE,
-            row['distance'] if row['distance'] is not None else MAX_DISTANCE
-        )
-        merged_results[group_key]['similarity'] = max(
-            merged_results[group_key]['similarity'] if merged_results[group_key]['similarity'] is not None else 0,
-            row['similarity'] if row['similarity'] is not None else 0
-        )
-        merged_results[group_key]['score'] = max(
-            merged_results[group_key]['score'] if merged_results[group_key]['score'] is not None else 0,
-            row['score'] if row['score'] is not None else 0
-        )
-        merged_results[group_key]['chunks'].append({
-            'chunk_index': row['chunk_index'],
-            'chunk_text': row['chunk_text']
-        })
-        merged_results[group_key]['chunks'].sort(
-            key=lambda x: x['chunk_index'])
-        merged_results[group_key].pop('chunk_index', None)
-        merged_results[group_key].pop('chunk_text', None)
-    m_res = sorted(merged_results.values(
-    ), key=lambda x: x['distance'] if x['distance'] is not None else MAX_DISTANCE)
-    for row in m_res:
-        for i, chunk in enumerate(row['chunks']):
-            if i > 0 and len(row['chunks']) > 1 \
-                    and row['chunks'][i-1]['chunk_index'] == row['chunks'][i]['chunk_index'] - 1:
-                row['chunks'][i]['chunk_text'] = chunk_by_sentence(
-                    chunk['chunk_text']
-                )
-                if len(row['chunks'][i]['chunk_text']) >= 3:
-                    row['chunks'][i]['chunk_text'] = row['chunks'][i]['chunk_text'][1:]
-                row['chunks'][i]['chunk_text'] = '...'.join(
-                    row['chunks'][i]['chunk_text']
-                )
-        row['text'] = '...'.join([c['chunk_text'] for c in row['chunks']])
-        del row['chunks']
+        tasks_to_run.append(asyncio.create_task(
+            _perform_bm25_search(tp_resp, bm25_search_tmpl_builder, TABLE_NAME)
+        ))
+        bm25_search_task_idx = current_task_idx
+        current_task_idx += 1
+    
+    if config.search_type in ["image", "all"]:
+        tasks_to_run.append(asyncio.create_task(
+            _perform_img_search(tp_resp, img_search_tmpl_builder)
+        ))
+        img_search_task_idx = current_task_idx
 
-    if config.rerank:
-        print("> Reranking...")
-        print("> Input size: ", len(m_res))
-        # Rerank the results based on the fusion score
-        scores = await rerank(topic, [row['text'][:4096] for row in m_res], max_results) # Use await
-        for i in range(len(m_res)):
-            m_res[i]['rank_score'] = scores[i]
-    else:
-        for i in range(len(m_res)):
-            m_res[i]['rank_score'] = m_res[i].get('score', 0)
-    m_res = sorted(m_res, key=lambda x: x['rank_score'], reverse=True)
-    m_res = m_res[:max_results]
+    if tasks_to_run:
+        all_task_results = await asyncio.gather(*tasks_to_run)
 
-    print("Fusion Results:")
-    print(f"{'ID':<10}    {'Distance':<15}    {'Score':<15}    {'Rank Score':<15}    {'Title':<50}    {'URL':<50}    {'Text':<90}")
-    print("-" * 200)
-    for row in m_res:
-        distance = f"{row['distance']:.4f}" if isinstance(
-            row['distance'], (int, float)) else "N/A"
-        score = f"{row['score']:.4f}" if isinstance(
-            row['score'], (int, float)) else "N/A"
-        url = row.get('url', 'N/A')
-        if len(row['title']) >= 50:
-            title = f"{row['title'][:47]}..."
-        else:
-            title = row['title']
-        if len(url) >= 50:
-            url = f"{url[:47]}..."
-        text = row['text'].replace('\n', ' ')
-        start = (len(text) - 80) // 2
-        text = f"...{text[start:start + 80 - 6]}..."
-        print(
-            f"{row['id']:<10}    {distance:<15}    {score:<15}    {row['rank_score']:<15}    {title:<50}    {url:<50}    {text:<80}")
+        if embedding_search_task_idx != -1:
+            e_res_data = all_task_results[embedding_search_task_idx]
+        if bm25_search_task_idx != -1:
+            b_res_data = all_task_results[bm25_search_task_idx]
+        if img_search_task_idx != -1:
+            is_res_data = all_task_results[img_search_task_idx] 
 
-
-    # Merge image results
-    unique_is_res = {}
-    for result_set in is_res:
-        for row in result_set:
+    # Process text results if requested
+    if config.search_type in ["text", "all"]:
+        print("> Fuse Score (Text)...")
+        merged_text_results = {}
+        for row in e_res_data:
             result_id = row['id']
-            result_distance = row['distance']
-            if result_id not in unique_is_res or result_distance < unique_is_res[result_id]['distance']:
-                unique_is_res[result_id] = row
-    is_res = sorted(list(unique_is_res.values()), key=lambda x: x['distance'])
-    is_res = is_res[:max_results]
-    for row in is_res:
-        row["score"] = row.get("similarity", 0)
+            merged_text_results[result_id] = {**row, 'score': None}
+        for row in b_res_data:
+            result_id = row['id']
+            if result_id in merged_text_results:
+                merged_text_results[result_id].update(row)
+            else:
+                merged_text_results[result_id] = {**row, 'distance': None, 'similarity': None}
+        
+        if merged_text_results:
+            m_res_intermediate = sorted(merged_text_results.values(), 
+                                     key=lambda x: x['distance'] if x['distance'] is not None else MAX_DISTANCE)
+            def sort_key_fn(result):
+                return fusion_sort_key(result, config.vector_weight, config.bm25_weight)
+            m_res_intermediate = sorted(m_res_intermediate, key=sort_key_fn, reverse=True)
+            m_res_intermediate = m_res_intermediate[:max(MAX_RERANK_INPUT_LEN, max_results*10)]
 
-    for row in m_res:
-        row["score"] = row.get("rank_score", 0)
-    return m_res, is_res
+            print("> Merge chunks (Text)...")
+            merged_chunks_results = {}
+            for row in m_res_intermediate:
+                group_key = row['source_id']
+                if group_key not in merged_chunks_results:
+                    merged_chunks_results[group_key] = {**row, 'chunks': []}
+                # Update aggregated scores/distances for the group
+                merged_chunks_results[group_key]['distance'] = min(
+                    merged_chunks_results[group_key]['distance'] if merged_chunks_results[group_key]['distance'] is not None else MAX_DISTANCE,
+                    row['distance'] if row['distance'] is not None else MAX_DISTANCE)
+                merged_chunks_results[group_key]['similarity'] = max(
+                    merged_chunks_results[group_key]['similarity'] if merged_chunks_results[group_key]['similarity'] is not None else 0,
+                    row['similarity'] if row['similarity'] is not None else 0)
+                merged_chunks_results[group_key]['score'] = max(
+                    merged_chunks_results[group_key]['score'] if merged_chunks_results[group_key]['score'] is not None else 0,
+                    row['score'] if row['score'] is not None else 0)
+                merged_chunks_results[group_key]['chunks'].append({'chunk_index': row['chunk_index'], 'chunk_text': row['chunk_text']})
+                merged_chunks_results[group_key]['chunks'].sort(key=lambda x: x['chunk_index'])
+                # Pop individual chunk data after aggregation if it's part of the row dict itself
+                merged_chunks_results[group_key].pop('chunk_index', None)
+                merged_chunks_results[group_key].pop('chunk_text', None)
+
+            m_res_intermediate = sorted(merged_chunks_results.values(), 
+                                     key=lambda x: x['distance'] if x['distance'] is not None else MAX_DISTANCE)
+            for row in m_res_intermediate:
+                for i, chunk in enumerate(row['chunks']):
+                    if i > 0 and len(row['chunks']) > 1 and row['chunks'][i-1]['chunk_index'] == row['chunks'][i]['chunk_index'] - 1:
+                        chunk_sentences = chunk_by_sentence(chunk['chunk_text'])
+                        if len(chunk_sentences) >= 3:
+                            chunk_sentences = chunk_sentences[1:]
+                        row['chunks'][i]['chunk_text'] = '...'.join(chunk_sentences)
+                row['text'] = '...'.join([c['chunk_text'] for c in row['chunks']])
+                del row['chunks']
+
+            if config.rerank and m_res_intermediate:
+                print("> Reranking (Text)...")
+                print("> Input size: ", len(m_res_intermediate))
+                scores = await rerank(topic, [row['text'][:4096] for row in m_res_intermediate], max_results)
+                for i in range(len(m_res_intermediate)):
+                    m_res_intermediate[i]['rank_score'] = scores[i]
+            else:
+                for i in range(len(m_res_intermediate)):
+                    m_res_intermediate[i]['rank_score'] = m_res_intermediate[i].get('score', 0)
+            
+            m_res_final = sorted(m_res_intermediate, key=lambda x: x['rank_score'], reverse=True)
+            m_res_final = m_res_final[:max_results]
+
+            print("Fusion Results (Text):")
+            print(f"{'ID':<10}    {'Distance':<15}    {'Score':<15}    {'Rank Score':<15}    {'Title':<50}    {'URL':<50}    {'Text':<90}")
+            print("-" * 200)
+            for row in m_res_final:
+                distance = f"{row['distance']:.4f}" if isinstance(row['distance'], (int, float)) else "N/A"
+                score_val = f"{row['score']:.4f}" if isinstance(row['score'], (int, float)) else "N/A"
+                url = row.get('url', 'N/A')
+                title = f"{row['title'][:47]}..." if len(row['title']) >= 50 else row['title']
+                url_display = f"{url[:47]}..." if len(url) >= 50 else url # Renamed to avoid conflict
+                text_content = row['text'].replace('\n', ' ') # Renamed to avoid conflict
+                start = max(0, (len(text_content) - 80) // 2)
+                text_display = f"...{text_content[start:start + 80 - 6]}..." if len(text_content) > 80 else text_content
+                print(
+                    f"{row['id']:<10}    {distance:<15}    {score_val:<15}    {row['rank_score']:<15}    {title:<50}    {url_display:<50}    {text_display:<80}")
+            for row in m_res_final: # Ensure final score is set
+                row["score"] = row.get("rank_score", 0)
+        else: # No text results from fusion
+            m_res_final = []
+
+    # Process image results if requested
+    if config.search_type in ["image", "all"]:
+        print("> Processing Image Results...")
+        unique_img_results = {}
+        # is_res_data is a list of lists of dicts from _perform_img_search
+        for result_set in is_res_data: 
+            for row in result_set:
+                result_id = row['id']
+                result_distance = row['distance']
+                if result_id not in unique_img_results or result_distance < unique_img_results[result_id]['distance']:
+                    unique_img_results[result_id] = row
+        
+        is_res_final = sorted(list(unique_img_results.values()), key=lambda x: x['distance'])
+        is_res_final = is_res_final[:max_results]
+        for row in is_res_final:
+            row["score"] = row.get("similarity", 0) # Or calculate from distance if needed
+
+    return m_res_final, is_res_final
 
 async def image_encode_sig_from_file(uploaded_file: UploadFile) -> list:
     """
@@ -513,7 +514,6 @@ async def image_query(image_file: UploadFile, max_results: int):
 
             if result_id not in unique_img_results or result_distance < unique_img_results[result_id]['distance']:
                 unique_img_results[result_id] = row
-    
     # Sort by distance and take top N
     sorted_images = sorted(list(unique_img_results.values()), key=lambda x: x['distance'])
     final_image_results = sorted_images[:max_results]
@@ -526,10 +526,7 @@ async def image_query(image_file: UploadFile, max_results: int):
         row.setdefault('processed_storage_id', 'N/A')
         row.setdefault('aspect_ratio', 1.0)
         row.setdefault('exif', {})
-        row.setdefault('meta', {})
         row.setdefault('source', [])
-
-
     # For image_query, text results are typically empty.
     return [], final_image_results
 
@@ -537,4 +534,4 @@ async def image_query(image_file: UploadFile, max_results: int):
 if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv()
-    asyncio.run(query("what cut is a bolar roast"))
+    asyncio.run(query("what is an ai model"))

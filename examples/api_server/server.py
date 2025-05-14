@@ -1,11 +1,15 @@
 from typing import List
+
 from dotenv import load_dotenv
+
 load_dotenv()
-from fastmcp import FastMCP
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-from pydantic import BaseModel
 from contextlib import asynccontextmanager
+
 import handler
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastmcp import FastMCP
+from pydantic import BaseModel
+
 
 class TextRequest(BaseModel):
     query: str
@@ -20,8 +24,9 @@ class TextRequest(BaseModel):
                 "options": {
                     "refine_query": True,
                     "rerank": True,
-                    "vector_weight": 0.6,
-                    "bm25_weight": 0.4
+                    "vector_weight": 0.9,
+                    "bm25_weight": 0.1,
+                    "search_type": "all"
                 },
             }
         }
@@ -39,7 +44,6 @@ class SearchResultImageItem(BaseModel):
     processed_storage_id: str
     aspect_ratio: float
     exif: dict
-    meta: dict
     source: List[str]
     distance: float
 
@@ -99,7 +103,7 @@ async def search_text(request: TextRequest):
         request (TextRequest): The search request containing text query and pagination parameters
 
     Returns:
-        dict: Search results containing similar images with their metadata
+        dict: Search results containing similar images
 
     Raises:
         HTTPException: If services are not initialized or search fails
@@ -126,7 +130,7 @@ async def search_image(
         max_results (int): Maximum number of results to return.
 
     Returns:
-        dict: Search results containing similar images with their metadata
+        dict: Search results containing similar images
 
     Raises:
         HTTPException: If services are not initialized or search fails
@@ -149,6 +153,7 @@ if __name__ == "__main__":
     import os
     import signal
     from multiprocessing import Process
+
     import uvicorn
     port = os.getenv("API_SERVER_PORT", 8080)
     port = int(port)
