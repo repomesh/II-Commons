@@ -125,6 +125,6 @@ $ docker build -t chipmunk .
 $ docker run --rm --gpus all -v ./.env:/app/.env chipmunk
 ```
 
-## Try the demo API service
+## Try the demo API/MCP services
 
-Checkout the [documentation](examples/) for more details.
+Checkout the [documentation](examples/) for API/MCP services and more details.
