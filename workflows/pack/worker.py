@@ -1,5 +1,7 @@
+from io import StringIO
 from pathlib import Path
 from tqdm import tqdm
+import csv
 import hashlib
 import json
 import os
@@ -53,31 +55,42 @@ def pack_data(input, output, force=False):
     output = (output or '').strip()
     assert len(input) > 2, 'Input is required.'
     assert len(output) > 2 , 'Output is required.'
-    if force:
-        shutil.rmtree(output)
+    try:
+        force and shutil.rmtree(output)
+    except Exception as e:
+        pass
     os.makedirs(output, exist_ok=False)
     total_bytes = os.path.getsize(input)
     file_index = 0
-    with open(input, "r", encoding=ENCODING) as f:
-        header = f.readline()
+    with open(input, "r", encoding=ENCODING, newline='') as f:
+        reader = csv.reader(f)
+        header = next(reader)
         csv_path, tar_path, json_path = get_file_name(output, file_index)
-        current_file = open(csv_path, 'w', encoding=ENCODING)
-        current_file.write(header)
+        current_file = open(csv_path, 'w', encoding=ENCODING, newline='')
+        writer = csv.writer(current_file)
+        writer.writerow(header)
+        current_file.flush()
         current_size = current_file.tell()
         pbar = tqdm(total=total_bytes, desc='Processing (by bytes)')
-        bytes_read = len(header.encode(ENCODING))
+        bytes_read = len((','.join(header) + '\n').encode(ENCODING))
         pbar.update(bytes_read)
-        for line in f:
-            line_size = len(line.encode(ENCODING))
+        for row in reader:
+            temp_buf = StringIO()
+            temp_writer = csv.writer(temp_buf)
+            temp_writer.writerow(row)
+            row_bytes = temp_buf.getvalue().encode(ENCODING)
+            line_size = len(row_bytes)
             if current_size + line_size > MAX_BYTES:
                 current_file.close()
                 # finalize_shard(csv_path, tar_path, json_path)
                 file_index += 1
                 csv_path, tar_path, json_path = get_file_name(output, file_index)
-                current_file = open(csv_path, 'w', encoding=ENCODING)
-                current_file.write(header)
+                current_file = open(csv_path, 'w', encoding=ENCODING, newline='')
+                writer = csv.writer(current_file)
+                writer.writerow(header)
+                current_file.flush()
                 current_size = current_file.tell()
-            current_file.write(line)
+            current_file.write(row_bytes.decode(ENCODING))
             current_size += line_size
             bytes_read += line_size
             pbar.update(line_size)
