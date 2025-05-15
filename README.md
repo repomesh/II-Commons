@@ -124,3 +124,7 @@ $ docker build -t chipmunk .
 ```bash
 $ docker run --rm --gpus all -v ./.env:/app/.env chipmunk
 ```
+
+## Try the demo API service
+
+Checkout the [documentation](examples/) for more details.
