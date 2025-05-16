@@ -4,17 +4,20 @@ II-Commons is a platform for collaboratively developing large, shared knowledge 
 
 For more details about our project, please visit our [blog post](https://www.ii.inc/web/blog/post/).
 
+
 ## Features
 
 This repository II-Commons contains tools for managing text and image datasets, including loading, fetching, and embedding large datasets.
 
 The dataset processed by these tools are suitable for model training, fine-tuning, RAG, MCP, and other applications.
 
+
 ## Requirements
 
 - [PostgreSQL](https://www.postgresql.org/) for metadata and vector storage ([PostgreSQL License](https://opensource.org/license/postgresql))
 - [VectorChord](https://github.com/tensorchord/vectorchord) for vector indexing ([ELv2](https://github.com/tensorchord/VectorChord/blob/main/licenses/LICENSE.ELv2), [AGPLv3](https://github.com/tensorchord/VectorChord/blob/main/licenses/LICENSE.AGPLv3))
 - [pg_search](https://github.com/paradedb/paradedb/tree/dev/pg_search#overview) for [BM25](https://en.wikipedia.org/wiki/Okapi_BM25) indexing ([AGPLv3](https://github.com/paradedb/paradedb?tab=AGPL-3.0-1-ov-file))
+
 
 ## Installation
 
@@ -29,6 +32,16 @@ $ pip install -r requirements.txt
 Create a `.env` file from [sample.env](./sample.env) and configure the necessary parameters.
 
 Be sure to configure the [PostgreSQL](https://www.postgresql.org/) and [S3](https://aws.amazon.com/s3/) related environment variables. Most of the features are dependent on them. The easiest way is to run it use our [Docker image](), or build your [own image](https://github.com/Intelligent-Internet/ii-commons/blob/main/examples/db/Dockerfile).
+
+
+## Prebuilt datasets
+
+We provide prebuilt datasets for your use.
+
+- 🤗 [Wikipedia English](https://huggingface.co/datasets/Leask/wikipedia_en)
+- 🤗 [PD12M](https://huggingface.co/datasets/Leask/pd12m)
+
+And more datasets are coming soon.
 
 
 ## Prepare a Image Dataset
@@ -63,6 +76,7 @@ $ python . -w embed_image -d pd12m
 ```
 
 You can run the above command multiple times parallelly to speed up the embedding process in a single machine or in a distributed environment. `II-commons` will automatically divide the dataset into multiple parts and embed them in parallel. And also, a worker can be up and down dynamically, `II-commons` will automatically manage the workers and the dataset parts, you don't need to care about it.
+
 
 ## Prepare a Text Dataset
 
@@ -110,11 +124,13 @@ $ python . -w embed_text -d wikipedia_en
 
 You can run the above command multiple times parallelly to speed up the embedding process in a single machine or in a distributed environment. `II-commons` will automatically divide the dataset into multiple parts and process them in parallel. And also, a worker can be up and down dynamically, `II-commons` will automatically manage the workers and the dataset parts, you don't need to care about it.
 
+
 ## Query
 
 ```bash
 $ python . -q [TOPIC]
 ```
+
 
 ## Docker
 
@@ -134,7 +150,9 @@ $ docker run --rm --gpus all -v ./.env:/app/.env ii-commons
 
 Checkout the [documentation](examples/) for API/MCP services and more details.
 
+
 ## FAQ
+
 
 ## What's Next: Our Roadmap
 
