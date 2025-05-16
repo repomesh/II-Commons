@@ -36,12 +36,14 @@ Be sure to configure the [PostgreSQL](https://www.postgresql.org/) and [S3](http
 
 ## Prebuilt datasets
 
-We provide prebuilt datasets for your use.
+We provide prebuilt datasets for your use. You can import, index and use them out of the box.
 
 - 🤗 [Wikipedia English](https://huggingface.co/datasets/Leask/wikipedia_en)
 - 🤗 [PD12M](https://huggingface.co/datasets/Leask/pd12m)
 
-And more datasets are coming soon.
+Skip the preparation steps and go to the [Query](#query) section if you want to use these prebuilt versions.
+
+More prebuilt datasets are under construction and will be released soon.
 
 
 ## Prepare a Image Dataset
