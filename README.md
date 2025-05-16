@@ -10,7 +10,7 @@ For more details about our project, please visit our [blog post](https://www.ii.
 
 This repository II-Commons contains tools for managing text and image datasets, including loading, fetching, and embedding large datasets.
 
-The dataset processed by these tools are suitable for model training, fine-tuning, RAG, and other applications.
+The dataset processed by these tools are suitable for model training, fine-tuning, RAG, MCP, and other applications.
 
 ## Requirements
 
