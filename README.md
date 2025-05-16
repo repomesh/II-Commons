@@ -1,8 +1,14 @@
-# 🐿️ Chipmunk
+# II-Commons
 
-<img src="https://github.com/user-attachments/assets/eb5ea0c1-17e4-4b2a-bccb-48dcb20b4344" alt="Chipmunk" width="400">
+![II-Commons](https://github.com/user-attachments/assets/)
 
-This repository [Chipmunk](https://en.wikipedia.org/wiki/Chipmunk) contains tools for managing text and image datasets, including loading, fetching, and embedding large datasets.
+II-Commons is a platform for collaboratively developing large, shared knowledge bases. It offers tools for distributed data handling, embedding computation, index creation, and information retrieval. Organizations and individuals can use it to create private or public knowledge resources.
+
+For more details about our project, please visit our [blog post](https://www.ii.inc/web/blog/post/).
+
+## Features
+
+This repository II-Commons contains tools for managing text and image datasets, including loading, fetching, and embedding large datasets.
 
 The dataset processed by these tools are suitable for model training, fine-tuning, RAG, and other applications.
 
@@ -15,8 +21,8 @@ The dataset processed by these tools are suitable for model training, fine-tunin
 ## Installation
 
 ```bash
-$ git clone https://github.com/Intelligent-Internet/dataset-tools.git
-$ cd dataset-tools
+$ git clone https://github.com/Intelligent-Internet/ii-commons.git
+$ cd ii-commons
 $ pip install -r requirements.txt
 ```
 
@@ -24,12 +30,13 @@ $ pip install -r requirements.txt
 
 Create a `.env` file from [sample.env](./sample.env) and configure the necessary parameters.
 
-Be sure to configure the [PostgreSQL](https://www.postgresql.org/) and [S3](https://aws.amazon.com/s3/) related environment variables. Most of the features are dependent on them.
+Be sure to configure the [PostgreSQL](https://www.postgresql.org/) and [S3](https://aws.amazon.com/s3/) related environment variables. Most of the features are dependent on them. The easiest way is to run it use our [Docker image](), or build your [own image](https://github.com/Intelligent-Internet/ii-commons/blob/main/examples/db/Dockerfile).
+
 
 ## Prepare a Image Dataset
 
-`Chipmunk` supports multiple image datasets, for example [PD12M](https://huggingface.co/datasets/Spawning/PD12M), [CC12M](https://github.com/google-research-datasets/conceptual-12m), [
-cc12m-cleaned](https://huggingface.co/datasets/opendiffusionai/cc12m-cleaned), and so on. It also supports custom datasets in parquet, jsonl, or csv format. In this demonstration, we will use a [sample mini dataset](https://github.com/Intelligent-Internet/Chipmunk/tree/main/meta/PD12M) which is the [first 100,000 entries from PD12M](https://huggingface.co/datasets/Spawning/PD12M/tree/main/metadata?show_file_info=metadata%2Fpd12m.000.parquet) for the sake of speed.
+`ii-Commons` supports multiple image datasets, for example [PD12M](https://huggingface.co/datasets/Spawning/PD12M), [CC12M](https://github.com/google-research-datasets/conceptual-12m), [
+cc12m-cleaned](https://huggingface.co/datasets/opendiffusionai/cc12m-cleaned), and so on. It also supports custom datasets in parquet, jsonl, or csv format. In this demonstration, we will use a [sample mini dataset](https://github.com/Intelligent-Internet/ii-commons/tree/main/meta/PD12M) which is the [first 100,000 entries from PD12M](https://huggingface.co/datasets/Spawning/PD12M/tree/main/metadata?show_file_info=metadata%2Fpd12m.000.parquet) for the sake of speed.
 
 ### 1. Load Metadata to Database
 
@@ -57,17 +64,17 @@ We use [google/siglip2-so400m-patch16-naflex](https://huggingface.co/google/sigl
 $ python . -w embed_image -d pd12m
 ```
 
-You can run the above command multiple times parallelly to speed up the embedding process in a single machine or in a distributed environment. `Chipmunk` will automatically divide the dataset into multiple parts and embed them in parallel. And also, a worker can be up and down dynamically, `Chipmunk` will automatically manage the workers and the dataset parts, you don't need to care about it.
+You can run the above command multiple times parallelly to speed up the embedding process in a single machine or in a distributed environment. `II-commons` will automatically divide the dataset into multiple parts and embed them in parallel. And also, a worker can be up and down dynamically, `II-commons` will automatically manage the workers and the dataset parts, you don't need to care about it.
 
 ## Prepare a Text Dataset
 
-`Chipmunk` is designed to support text based datasets like wikipedia, arXiv and so on. We will use the [Wikipedia English](https://dumps.wikimedia.org/) dataset for demonstration. Full support for arXiv is coming soon.
+`II-commons` is designed to support text based datasets like wikipedia, arXiv and so on. We will use the [Wikipedia English](https://dumps.wikimedia.org/) dataset for demonstration. Full support for arXiv is coming soon.
 
 ### 1. Get the Raw Dataset
 
 Navigate to the [wikipedia dump](https://dumps.wikimedia.org/enwiki/20250501/) directory. Download the dump file `pages-articles-multistream` in `xml.bz2` format, like [enwiki-20250501-pages-articles-multistream.xml.bz2](https://dumps.wikimedia.org/enwiki/20250501/enwiki-20250501-pages-articles-multistream.xml.bz2). Extract the `xml` file from the `bz2` archive.
 
-You can use the [sample mini dataset](https://github.com/Intelligent-Internet/Chipmunk/tree/main/meta/wikipedia_en) for testing, jump to the [Load the Dataset to Database](#load-the-dataset-to-database) section.
+You can use the [sample mini dataset](https://github.com/Intelligent-Internet/ii-commons/tree/main/meta/wikipedia_en) for testing, jump to the [Load the Dataset to Database](#load-the-dataset-to-database) section.
 
 ### 2. Extract Pages from the Raw Dataset
 
@@ -103,7 +110,7 @@ We use [Snowflake/snowflake-arctic-embed-m-v2.0](https://huggingface.co/Snowflak
 $ python . -w embed_text -d wikipedia_en
 ```
 
-You can run the above command multiple times parallelly to speed up the embedding process in a single machine or in a distributed environment. `Chipmunk` will automatically divide the dataset into multiple parts and process them in parallel. And also, a worker can be up and down dynamically, `Chipmunk` will automatically manage the workers and the dataset parts, you don't need to care about it.
+You can run the above command multiple times parallelly to speed up the embedding process in a single machine or in a distributed environment. `II-commons` will automatically divide the dataset into multiple parts and process them in parallel. And also, a worker can be up and down dynamically, `II-commons` will automatically manage the workers and the dataset parts, you don't need to care about it.
 
 ## Query
 
@@ -116,15 +123,26 @@ $ python . -q [TOPIC]
 ### Build
 
 ```bash
-$ docker build -t chipmunk .
+$ docker build -t ii-commons .
 ```
 
 ### Run
 
 ```bash
-$ docker run --rm --gpus all -v ./.env:/app/.env chipmunk
+$ docker run --rm --gpus all -v ./.env:/app/.env ii-commons
 ```
 
 ## Try the demo API/MCP services
 
 Checkout the [documentation](examples/) for API/MCP services and more details.
+
+## FAQ
+
+## What's Next: Our Roadmap
+
+- [ ] Simplify installation and operation.
+- [ ] Offer more pre-computed indexes for modalities like PDFs, video and audio.
+- [ ] Create more AI-assisted generated knowledge bases for public good.
+- [ ] Provide API services for datasets.
+- [ ] Establish a knowledge base hub for easier sharing and downloading.
+- [ ] Develop a desktop version for personal everyday data retrieval.
