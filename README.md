@@ -135,3 +135,15 @@ $ docker run --rm --gpus all -v ./.env:/app/.env ii-commons
 ## Try the demo API/MCP services
 
 Checkout the [documentation](examples/) for API/MCP services and more details.
+
+## FAQ
+
+## What's Next: Our Roadmap
+
+- [ ]Optimize performance and automate parameter configuration.
+- [ ]Simplify installation and operation.
+- [ ]Offer more pre-computed indexes for modalities like PDFs, video and audio.
+- [ ]Create more AI-assisted generated knowledge bases for public good.
+- [ ]Provide API services for datasets.
+- [ ]Establish a knowledge base hub for easier sharing and downloading.
+- [ ]Develop a desktop version for personal everyday data retrieval.
