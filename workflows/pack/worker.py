@@ -8,6 +8,7 @@ import os
 import shutil
 import tarfile
 import time
+import sys
 
 ENCODING = 'utf-8'
 MAX_BYTES = 1000 * 1000 * 1000  # 1GB
@@ -101,6 +102,7 @@ def pack_data(input, output, force=False):
 
 def run(input, output, force=False):
     print(f'📦 Packing {input}...')
+    csv.field_size_limit(sys.maxsize)
     start_time = time.time()
     pack_data(input, output, force)
     print(f'👌 Done! Time taken: {time.time() - start_time:.2f} seconds')
