@@ -38,8 +38,8 @@ Be sure to configure the [PostgreSQL](https://www.postgresql.org/) and [S3](http
 
 We provide prebuilt datasets for your use.
 
-- 🤗 [Wikipedia English](https://huggingface.co/datasets/Leask/wikipedia_en)
-- 🤗 [PD12M](https://huggingface.co/datasets/Leask/pd12m)
+- [🤗 Wikipedia English](https://huggingface.co/datasets/Leask/wikipedia_en)
+- [🤗 PD12M](https://huggingface.co/datasets/Leask/pd12m)
 
 And more datasets are coming soon.
 
