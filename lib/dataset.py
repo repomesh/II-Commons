@@ -237,7 +237,7 @@ RULES = {
 def map_field(set_name, meta, field, i2d=False, default=None):
     return meta.get((
         I2D_JSON if i2d else RULES[set_name]
-    ).get(field, field), default)
+    ).get(field, field)) or default
 
 
 def init(name, i2d=False):
@@ -302,6 +302,7 @@ def init(name, i2d=False):
             'caption_long': mf('caption_long', ''),
             'hash': hash,
             'vector': None,
+            'origin_source': mf('source', ''),
             'origin_hash': mf('origin_hash', ''),
             'origin_width': width,
             'origin_height': height,
@@ -313,6 +314,7 @@ def init(name, i2d=False):
             'exif': {} if mf('exif') is None else json.loads(mf('exif')),
             'meta': mf('meta', {}),
             'source': name,
+            'license': mf('license', ''),
         }
 
     dataset.name = name

@@ -28,10 +28,25 @@ def sleep(seconds=1):
 
 
 def insert_data(args) -> dict:
+    # dataset patch:
+    # sql = f"""UPDATE {ds.get_table_name()} SET
+    #     origin_source = %s, license = %s WHERE url = %s"""
+    # meta_items = args['meta_items'] if type(args['meta_items']) == list \
+    #     else [args['meta_items']]
+    # to_update = []
+    # for meta in meta_items:
+    #     to_update.append((
+    #         meta['origin_source'],
+    #         meta['license'],
+    #         meta['url']
+    #     ))
+    # batch_insert(sql, to_update)
+    # print(f'🔥 Upserted meta: {len(meta_items)} items.')
+    # return {'meta_items': meta_items}
     sql = f"""INSERT INTO {ds.get_table_name()} (url, hash, caption,
-        caption_long, origin_hash, origin_width, origin_height, exif, meta,
-        source) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        ON CONFLICT (url) DO NOTHING"""
+        caption_long, origin_source, origin_hash, origin_width, origin_height,
+        exif, meta, source, license) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s,
+        %s, %s, %s) ON CONFLICT (url) DO NOTHING"""
     meta_items = args['meta_items'] if type(args['meta_items']) == list \
         else [args['meta_items']]
     urls = []
@@ -50,12 +65,14 @@ def insert_data(args) -> dict:
                 meta['hash'],
                 meta['caption'],
                 meta['caption_long'],
+                meta['origin_source'],
                 meta['origin_hash'],
                 meta['origin_width'],
                 meta['origin_height'],
                 meta['exif'],
                 meta['meta'],
                 meta['source'],
+                meta['license'],
             ))
         batch_insert(sql, to_insert)
         print(f'🔥 Upserted meta: {len(to_insert)} items.')
@@ -66,7 +83,7 @@ def insert_data(args) -> dict:
 
 def run(name, meta_path):
     global buffer, ds, dataset_name
-    last_item, limit = 0, 0
+    i, last_item, limit = 0, 0, 0
     dataset_name = name
     ds = init(dataset_name)
     match name:

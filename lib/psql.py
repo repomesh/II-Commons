@@ -237,6 +237,7 @@ def init(dataset):
                     hash VARCHAR NOT NULL DEFAULT '',
                     caption VARCHAR NOT NULL DEFAULT '',
                     caption_long VARCHAR NOT NULL DEFAULT '',
+                    origin_source VARCHAR NOT NULL DEFAULT '',
                     origin_hash VARCHAR NOT NULL DEFAULT '',
                     origin_width BIGINT NOT NULL DEFAULT 0,
                     origin_height BIGINT NOT NULL DEFAULT 0,
@@ -248,11 +249,13 @@ def init(dataset):
                     exif JSONB NOT NULL DEFAULT '{EMPTY_OBJECT}',
                     meta JSONB NOT NULL DEFAULT '{EMPTY_OBJECT}',
                     source JSONB NOT NULL DEFAULT '[]',
+                    license VARCHAR NOT NULL DEFAULT '',
                     vector halfvec(1152) DEFAULT NULL,
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )""",
                 f'CREATE UNIQUE INDEX IF NOT EXISTS {table_name}_url_index ON {table_name} (url)',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_origin_source_index ON {table_name} (origin_source)',
                 f'CREATE INDEX IF NOT EXISTS {table_name}_origin_width_index ON {table_name} (origin_width)',
                 f'CREATE INDEX IF NOT EXISTS {table_name}_origin_height_index ON {table_name} (origin_height)',
                 f'CREATE INDEX IF NOT EXISTS {table_name}_origin_storage_id_index ON {table_name} (origin_storage_id)',
@@ -275,6 +278,7 @@ def init(dataset):
                 f"CREATE INDEX IF NOT EXISTS {table_name}_caption_index ON {table_name} (caption) WHERE caption = ''",
                 f"CREATE INDEX IF NOT EXISTS {table_name}_caption_long_index ON {table_name} (caption_long) WHERE caption_long = ''",
                 f'CREATE INDEX IF NOT EXISTS {table_name}_vector_null_index ON {table_name} (vector) WHERE vector IS NULL',
+                f'CREATE INDEX IF NOT EXISTS {table_name}_license_index ON {table_name} (license)',
                 f"SELECT vchordrq_prewarm('{table_name}_vector_index')"
             ]
         case 'workers':
