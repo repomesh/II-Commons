@@ -1,6 +1,6 @@
-# ii Commons Examples
+# II-Commons Examples
 
-This directory contains examples demonstrating the usage of the "ii Commons" components.
+This directory contains examples demonstrating the usage of the "II-Commons" components.
 
 ## Overview
 

@@ -18,6 +18,48 @@ The dataset processed by these tools are suitable for model training, fine-tunin
 - [VectorChord](https://github.com/tensorchord/vectorchord) for vector indexing ([ELv2](https://github.com/tensorchord/VectorChord/blob/main/licenses/LICENSE.ELv2), [AGPLv3](https://github.com/tensorchord/VectorChord/blob/main/licenses/LICENSE.AGPLv3))
 - [pg_search](https://github.com/paradedb/paradedb/tree/dev/pg_search#overview) for [BM25](https://en.wikipedia.org/wiki/Okapi_BM25) indexing ([AGPLv3](https://github.com/paradedb/paradedb?tab=AGPL-3.0-1-ov-file))
 
+## Quick start 
+
+Recovery from our pre-computed database backup to run a vector similarity search instance.
+
+Download a database backup from huggingface: [Wikipedia English](https://huggingface.co/datasets/Leask/wikipedia_en) or [PD12M](https://huggingface.co/datasets/Leask/pd12m)
+
+Use our [Docker image]() to run a postgresql node. for example, your `Wikipedia English` download dir is `/data/wikipedia_en`.
+
+> [!NOTE]
+> the default postgres password is `postgres.1234`, please change the password!
+
+
+```
+sudo docker run --rm -it \
+  --name postgres-localvector \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres.1234 \
+  -e POSTGRES_DB=localvector \
+  -e PGDATA=/var/lib/postgresql/data/pgdata \
+  -v /data/wikipedia_en:/var/lib/postgresql/data \
+  -p 5432:5432 \
+  postgres-17-parade-vchord
+```
+
+Use `psql` command to connect the postgresql node, and connect to database `localvector`:
+```
+postgres=# \c localvector
+```
+Run `\dx` command to make sure extensions `pg_search` and `vchord` are available.
+
+Setup `probes` for vectorchord query, you can try a higher value to blance [query and performance](https://docs.vectorchord.ai/vectorchord/usage/performance-tuning.html#query-performance).
+```
+ALTER SYSTEM SET vchordrq.probes = 100;
+```
+then restart postgresql. Congratulation, the database is ready to use. 
+
+Next step: try to [benchmark](https://github.com/Intelligent-Internet/II-Commons/tree/main/examples/benchmark) the system, or run an [api server](https://github.com/Intelligent-Internet/II-Commons/tree/main/examples).
+
+> [!NOTE]
+> warm the index to improve performance:
+> ```SELECT vchordrq_prewarm('ts_wikipedia_en_embed_vector_index');```
+
 
 ## Installation
 
@@ -45,6 +87,29 @@ Skip the preparation steps and go to the [Query](#query) section if you want to 
 
 More prebuilt datasets are under construction and will be released soon.
 
+## Evaluation
+
+Evaluation NDCG@10 on [TREC-DL 2019](https://microsoft.github.io/TREC-2019-Deep-Learning/), with MS Marco v1.1 Dataset. Retrieval 30 results/query, (Hybrid search includes 30 embedding results and 30 BM25 results) with similarly sorting and reranker model.
+
+| Approach       | Similarly| Ms-marco-MiniLM-L12-v2 [^1] | Bge-reranker-v2-m3 | 
+| ------------- |:-------------: | :---: |:---: |
+| BM25 (pg_search)   | 0.302 | 0.418  | 0.415  |
+| embedding (VectorChord)   | 0.661 |  0.712  | 0.700  |
+| emb * 0.8 + bm25 * 0.2 | 0.598 | 0.723 | **0.726** |
+| emb * 1.0 + bm25 * 0 [^2] | **0.661** | **0.733** | 0.723 |
+
+[^1]: Ms-marco-MiniLM-L12-v2 trained on the MS Marco Passage Ranking tasks
+
+[^2]: emb*1.0 / bm25*0: BM25 results included in search, scores set to 0
+
+## Benchmark and Cost
+
+Run random 500 queries on:
+
+Google Cloud, e2-standard-2 (2 vCPU, 1 core, 8 GB memory)
+
+* database dir on 100 GB ssd: Average 0.13s/query  (cost ~US$67/month)
+* database dir on 100 GB balanced persistent  : Average 0.32s/query (cost ~US$60/month)
 
 ## Prepare a Image Dataset
 
