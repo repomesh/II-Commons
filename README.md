@@ -24,7 +24,7 @@ You can build your own dataset from scratch or quickly begin experimenting with 
 
 This session shows how to recovery from our pre-computed database backup to run a vector similarity search instance.
 
-Download a database backup from huggingface: [Wikipedia English]([https://huggingface.co/datasets/Leask/wikipedia_en](https://huggingface.co/datasets/Intelligent-Internet/wikipedia_en/tree/psql_basebackup)) or [PD12M]([https://huggingface.co/datasets/Leask/pd12m](https://huggingface.co/datasets/Intelligent-Internet/pd12m/tree/psql_basebackup))
+Download a database backup from huggingface: [Wikipedia English]((https://huggingface.co/datasets/Intelligent-Internet/wikipedia_en/tree/psql_basebackup) or [PD12M](https://huggingface.co/datasets/Intelligent-Internet/pd12m/tree/psql_basebackup)
 
 Untar all tar files:
 ```
@@ -77,7 +77,7 @@ ALTER SYSTEM SET vchordrq.probes = 100;
 ```
 then restart postgresql. Congratulation, the database is ready to use.
 
-Next step, try to run [benchmark](https://github.com/Intelligent-Internet/II-Commons/tree/main/examples/benchmark), or [api server](https://github.com/Intelligent-Internet/II-Commons/tree/main/examples).
+Next step, try to run [benchmark](https://github.com/Intelligent-Internet/II-Commons/tree/main/examples/benchmark) or [api server](https://github.com/Intelligent-Internet/II-Commons/tree/main/examples).
 
 > [!NOTE]
 > warm the index to improve performance:
@@ -104,8 +104,8 @@ Be sure to configure the [PostgreSQL](https://www.postgresql.org/) and [S3](http
 
 We provide prebuilt datasets for your use. You can import, index and use them out of the box.
 
-- 🤗 [Wikipedia English](https://huggingface.co/datasets/Leask/wikipedia_en)
-- 🤗 [PD12M](https://huggingface.co/datasets/Leask/pd12m)
+- 🤗 [Wikipedia English](https://huggingface.co/datasets/Intelligent-Internet/wikipedia_en)
+- 🤗 [PD12M](https://huggingface.co/datasets/Intelligent-Internet/pd12m)
 
 Skip the preparation steps and go to the [Query](#query) section if you want to use these prebuilt versions.
 
