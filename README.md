@@ -24,7 +24,7 @@ You can build your own dataset from scratch or quickly begin experimenting with 
 
 This session shows how to recovery from our pre-computed database backup to run a vector similarity search instance.
 
-Download a database backup from huggingface: [Wikipedia English]((https://huggingface.co/datasets/Intelligent-Internet/wikipedia_en/tree/psql_basebackup) or [PD12M](https://huggingface.co/datasets/Intelligent-Internet/pd12m/tree/psql_basebackup)
+Download a database backup from huggingface: [Wikipedia English](https://huggingface.co/datasets/Intelligent-Internet/wikipedia_en/tree/psql_basebackup) or [PD12M](https://huggingface.co/datasets/Intelligent-Internet/pd12m/tree/psql_basebackup)
 
 Untar all tar files:
 ```
