@@ -60,7 +60,9 @@ Next step, try to run [benchmark](https://github.com/Intelligent-Internet/II-Com
 
 > [!NOTE]
 > warm the index to improve performance:
-> ```SELECT vchordrq_prewarm('ts_wikipedia_en_embed_vector_index');```
+> ```sql
+> SELECT vchordrq_prewarm('ts_wikipedia_en_embed_vector_index');
+> ```
 
 ## Installation
 
