@@ -18,9 +18,11 @@ The dataset processed by these tools are suitable for model training, fine-tunin
 - [VectorChord](https://github.com/tensorchord/vectorchord) for vector indexing ([ELv2](https://github.com/tensorchord/VectorChord/blob/main/licenses/LICENSE.ELv2), [AGPLv3](https://github.com/tensorchord/VectorChord/blob/main/licenses/LICENSE.AGPLv3))
 - [pg_search](https://github.com/paradedb/paradedb/tree/dev/pg_search#overview) for [BM25](https://en.wikipedia.org/wiki/Okapi_BM25) indexing ([AGPLv3](https://github.com/paradedb/paradedb?tab=AGPL-3.0-1-ov-file))
 
-## Quick start 
+## Quick start
 
-Recovery from our pre-computed database backup to run a vector similarity search instance.
+You can build your own dataset from scratch or quickly begin experimenting with our pre-prepared datasets.
+
+This session shows how to recovery from our pre-computed database backup to run a vector similarity search instance.
 
 Download a database backup from huggingface: [Wikipedia English](https://huggingface.co/datasets/Leask/wikipedia_en) or [PD12M](https://huggingface.co/datasets/Leask/pd12m)
 
@@ -52,7 +54,7 @@ Setup `probes` for vectorchord query, you can try a higher value to blance [quer
 ```
 ALTER SYSTEM SET vchordrq.probes = 100;
 ```
-then restart postgresql. Congratulation, the database is ready to use. 
+then restart postgresql. Congratulation, the database is ready to use.
 
 Next step, try to run [benchmark](https://github.com/Intelligent-Internet/II-Commons/tree/main/examples/benchmark), or [api server](https://github.com/Intelligent-Internet/II-Commons/tree/main/examples).
 
@@ -90,7 +92,7 @@ More prebuilt datasets are under construction and will be released soon.
 
 Evaluation NDCG@10 on [TREC-DL 2019](https://microsoft.github.io/TREC-2019-Deep-Learning/), with MS Marco v1.1 Dataset. Retrieval 30 results/query, (Hybrid search includes 30 embedding results and 30 BM25 results) with similarly sorting and reranker model.
 
-| Approach       | Similarly| Ms-marco-MiniLM-L12-v2 [^1] | Bge-reranker-v2-m3 | 
+| Approach       | Similarly| Ms-marco-MiniLM-L12-v2 [^1] | Bge-reranker-v2-m3 |
 | ------------- |:-------------: | :---: |:---: |
 | BM25 (pg_search)   | 0.302 | 0.418  | 0.415  |
 | embedding (VectorChord)   | 0.661 |  0.712  | 0.700  |
