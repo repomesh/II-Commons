@@ -24,7 +24,7 @@ Recovery from our pre-computed database backup to run a vector similarity search
 
 Download a database backup from huggingface: [Wikipedia English](https://huggingface.co/datasets/Leask/wikipedia_en) or [PD12M](https://huggingface.co/datasets/Leask/pd12m)
 
-Use our [Docker image]() to run a postgresql node. for example, your `Wikipedia English` download dir is `/data/wikipedia_en`.
+Use our [Docker image](https://github.com/Intelligent-Internet/II-Commons/tree/main/examples/db) to run a postgresql node. for example, the `Wikipedia English` download dir is `/data/wikipedia_en`.
 
 > [!NOTE]
 > the default postgres password is `postgres.1234`, please change the password!
@@ -54,12 +54,11 @@ ALTER SYSTEM SET vchordrq.probes = 100;
 ```
 then restart postgresql. Congratulation, the database is ready to use. 
 
-Next step: try to [benchmark](https://github.com/Intelligent-Internet/II-Commons/tree/main/examples/benchmark) the system, or run an [api server](https://github.com/Intelligent-Internet/II-Commons/tree/main/examples).
+Next step, try to run [benchmark](https://github.com/Intelligent-Internet/II-Commons/tree/main/examples/benchmark), or [api server](https://github.com/Intelligent-Internet/II-Commons/tree/main/examples).
 
 > [!NOTE]
 > warm the index to improve performance:
 > ```SELECT vchordrq_prewarm('ts_wikipedia_en_embed_vector_index');```
-
 
 ## Installation
 
