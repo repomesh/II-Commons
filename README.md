@@ -24,13 +24,34 @@ You can build your own dataset from scratch or quickly begin experimenting with 
 
 This session shows how to recovery from our pre-computed database backup to run a vector similarity search instance.
 
-Download a database backup from huggingface: [Wikipedia English](https://huggingface.co/datasets/Leask/wikipedia_en) or [PD12M](https://huggingface.co/datasets/Leask/pd12m)
+Download a database backup from huggingface: [Wikipedia English]([https://huggingface.co/datasets/Leask/wikipedia_en](https://huggingface.co/datasets/Intelligent-Internet/wikipedia_en/tree/psql_basebackup)) or [PD12M]([https://huggingface.co/datasets/Leask/pd12m](https://huggingface.co/datasets/Intelligent-Internet/pd12m/tree/psql_basebackup))
+
+Untar all tar files:
+```
+cat basebackup/basebackup.tar.part.* | tar -xvf -
+```
+
+remove all tar.part files, or move them to another dir for backup.
+```
+rm -f basebackup/basebackup.tar.*
+```
+
+then, basebackup dir will look like this:
+```
+PG_VERSION
+backup_label.old
+backup_manifest
+base
+global
+pg_commit_ts
+pg_dynshmem
+...
+```
 
 Use our [Docker image](https://github.com/Intelligent-Internet/II-Commons/tree/main/examples/db) to run a postgresql node. for example, the `Wikipedia English` download dir is `/data/wikipedia_en`.
 
 > [!NOTE]
 > the default postgres password is `postgres.1234`, please change the password!
-
 
 ```
 sudo docker run --rm -it \
@@ -38,7 +59,7 @@ sudo docker run --rm -it \
   -e POSTGRES_USER=postgres \
   -e POSTGRES_PASSWORD=postgres.1234 \
   -e POSTGRES_DB=localvector \
-  -e PGDATA=/var/lib/postgresql/data/pgdata \
+  -e PGDATA=/var/lib/postgresql/data/basebackup \
   -v /data/wikipedia_en:/var/lib/postgresql/data \
   -p 5432:5432 \
   postgres-17-parade-vchord
