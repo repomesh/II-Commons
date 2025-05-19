@@ -72,7 +72,7 @@ $ pip install -r requirements.txt
 
 Create a `.env` file from [sample.env](./sample.env) and configure the necessary parameters.
 
-Be sure to configure the [PostgreSQL](https://www.postgresql.org/) and [S3](https://aws.amazon.com/s3/) related environment variables. Most of the features are dependent on them. The easiest way is to run it use our [Docker image](), or build your [own image](https://github.com/Intelligent-Internet/ii-commons/blob/main/examples/db/Dockerfile).
+Be sure to configure the [PostgreSQL](https://www.postgresql.org/) and [S3](https://aws.amazon.com/s3/) related environment variables. Most of the features are dependent on them. The easiest way is to run it use our [Docker image](https://github.com/Intelligent-Internet/ii-commons/blob/main/examples/db/Dockerfile), or build your own
 
 
 ## Prebuilt datasets
