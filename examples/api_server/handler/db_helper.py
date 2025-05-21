@@ -24,7 +24,7 @@ def tempalte_bm25_search_ts_ms_marco(table_name: str, b: any) -> tuple:
 
 
 def tempalte_vector_search_ts_wikipedia_en_embed(table_name: str, e: any) -> tuple:
-    sql = f"""SELECT id, title, url, snapshot, source_id, chunk_index, chunk_text,
+    sql = f"""SELECT id, title, url, source_id, chunk_index, chunk_text,
             (vector <=> %s::vector) as distance,
             ((2 - (vector <=> %s::vector)) / 2) as similarity
             FROM {table_name} ORDER BY (vector <=> %s::vector) ASC OFFSET %s LIMIT %s"""
@@ -34,7 +34,7 @@ def tempalte_vector_search_ts_wikipedia_en_embed(table_name: str, e: any) -> tup
  
 def tempalte_bm25_search_ts_wikipedia_en_embed(table_name: str, b: any) -> tuple:
     b = escape_bm25_query_simple(b)
-    sql = f"""SELECT id, title, url, snapshot, source_id, chunk_index, chunk_text, paradedb.score(id) as score
+    sql = f"""SELECT id, title, url, source_id, chunk_index, chunk_text, paradedb.score(id) as score
             FROM {table_name} WHERE title @@@ %s or chunk_text @@@ %s
             ORDER BY score DESC OFFSET %s LIMIT %s"""
     values = (b, b, 0, SUB_QUERY_COUNT)
@@ -42,7 +42,7 @@ def tempalte_bm25_search_ts_wikipedia_en_embed(table_name: str, b: any) -> tuple
 
 
 def tempalte_vector_search_is_pd12m(table_name: str, e: any) -> tuple:
-    sql = f"""SELECT id, url, caption, processed_storage_id, aspect_ratio, exif, source,
+    sql = f"""SELECT id, url, caption, aspect_ratio, exif, source,
             (vector <-> %s::vector) as distance,
             (1 / (1 + (vector <-> %s::vector))) AS similarity
             FROM {table_name} ORDER BY (vector <-> %s::vector) ASC OFFSET %s LIMIT %s"""
