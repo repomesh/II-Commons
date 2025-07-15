@@ -1,5 +1,8 @@
 # II-Commons
 
+
+![II_Commons](II-Commons.png)
+
 II-Commons is a platform for collaboratively developing large, shared knowledge bases. It offers tools for distributed data handling, embedding computation, index creation, and information retrieval. Organizations and individuals can use it to create private or public knowledge resources.
 
 For more details about our project, please visit our [blog post](https://www.ii.inc/web/blog/post/).
