@@ -14,6 +14,11 @@ This repository II-Commons contains tools for managing text and image datasets, 
 
 The dataset processed by these tools are suitable for model training, fine-tuning, RAG, MCP, and other applications.
 
+## Latest Updates
+
+- 2025-07-15 Adds [II-Commons-Store](commons-store): A Plug-and-Play Knowledge Hub for AI Applications.
+
+
 
 ## Requirements
 
