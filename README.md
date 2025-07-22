@@ -262,4 +262,4 @@ Checkout the [documentation](examples/) for API/MCP services and more details.
 - [ ] Create more AI-assisted generated knowledge bases for public good.
 - [ ] Provide API services for datasets.
 - [ ] Establish a knowledge base hub for easier sharing and downloading.
-- [ ] Develop a desktop version for personal everyday data retrieval.
+- [x] Develop a desktop version for personal everyday data retrieval.
